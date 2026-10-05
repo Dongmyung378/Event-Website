@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layouts/default}">
+<head><title>Add a new event</title></head>
+<body>
+<div layout:fragment="content">
+  <h1>Add a new event</h1>
+  <p class="form-text">Fields marked with * are required.</p>
+  <form th:action="@{/events}" th:object="${event}" method="post">
+    <div class="alert alert-danger" role="alert" th:if="${#fields.hasAnyErrors()}">Please correct the highlighted fields.</div>
+    <div class="mb-3">
+      <label class="form-label" for="name">Event Name <span class="text-danger">*</span></label>
+      <input class="form-control" type="text" th:field="*{name}" id="name" required maxlength="255" th:attr="aria-invalid=${#fields.hasErrors('name')},aria-describedby=${#fields.hasErrors('name') ? 'name-error' : null}">
+      <p id="name-error" class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></p>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="date">Event Date <span class="text-danger">*</span></label>
+      <input class="form-control" type="date" th:field="*{date}" id="date" required th:attr="min=${earliestEventDate},aria-invalid=${#fields.hasErrors('date')},aria-describedby=${#fields.hasErrors('date') ? 'date-error' : null}">
+      <p id="date-error" class="text-danger" th:if="${#fields.hasErrors('date')}" th:errors="*{date}"></p>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="time">Event Time</label>
+      <input class="form-control" type="time" th:field="*{time}" id="time"  th:attr="aria-invalid=${#fields.hasErrors('time')},aria-describedby=${#fields.hasErrors('time') ? 'time-error' : null}">
+      <p id="time-error" class="text-danger" th:if="${#fields.hasErrors('time')}" th:errors="*{time}"></p>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="venue">Venue <span class="text-danger">*</span></label>
+      <select class="form-select" th:field="*{venue}" id="venue" required th:attr="aria-invalid=${#fields.hasErrors('venue')},aria-describedby=${#fields.hasErrors('venue') ? 'venue-error' : null}">
+        <option value="">Select a venue</option>
+        <option th:each="v : ${venues}" th:value="${v.id}" th:text="${v.name}"></option>
+      </select>
+      <p id="venue-error" class="text-danger" th:if="${#fields.hasErrors('venue')}" th:errors="*{venue}"></p>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="description">Description</label>
+      <textarea class="form-control" th:field="*{description}" id="description" rows="5" maxlength="499" th:attr="aria-invalid=${#fields.hasErrors('description')},aria-describedby=${#fields.hasErrors('description') ? 'description-error' : null}"></textarea>
+      <p id="description-error" class="text-danger" th:if="${#fields.hasErrors('description')}" th:errors="*{description}"></p>
+    </div>
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-warning" th:href="@{/events}">Cancel</a>
+  </form>
+</div>
+</body>
+</html>

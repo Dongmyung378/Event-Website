@@ -1,0 +1,8 @@
+.event-map { height: 350px; width: 100%; margin-top: 1rem; border-radius: 8px; }
+.event-map[hidden] { display: none; }
+.search-group { max-width: 38rem; }
+.skip-link { position: absolute; left: 1rem; top: -5rem; z-index: 10; }
+.skip-link:focus { top: 1rem; }
+.event-description { white-space: pre-wrap; overflow-wrap: anywhere; }
+td { overflow-wrap: anywhere; }
+.mapboxgl-popup-content { overflow-wrap: anywhere; }

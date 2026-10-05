@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <title layout:title-pattern="$LAYOUT_TITLE: $CONTENT_TITLE">EventLite</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+  <link rel="stylesheet" th:href="@{/webjars/font-awesome/css/all.min.css}">
+  <link rel="stylesheet" th:href="@{/css/eventlite.css}">
+</head>
+<body>
+  <a class="skip-link btn btn-primary" href="#main-content">Skip to content</a>
+  <div class="container py-3">
+    <header class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+      <nav aria-label="Main navigation" class="d-flex flex-wrap align-items-center gap-3">
+        <a class="fw-bold text-decoration-none" th:href="@{/home}">EventLite</a>
+        <a th:href="@{/events}">Events</a>
+        <a th:href="@{/venues}">Venues</a>
+      </nav>
+      <div sec:authorize="!isAuthenticated()">
+        <span class="me-2">Not signed in</span>
+        <a class="btn btn-primary" th:href="@{/sign-in}">Sign in</a>
+      </div>
+      <form sec:authorize="isAuthenticated()" th:action="@{/sign-out}" method="post" class="mb-0">
+        <span class="me-2">Signed in as <span sec:authentication="name"></span></span>
+        <button type="submit" class="btn btn-warning">Sign out</button>
+      </form>
+    </header>
+    <div class="alert alert-success" role="status" th:if="${ok_message != null}" th:text="${ok_message}"></div>
+    <div class="alert alert-danger" role="alert" th:if="${error_message != null}" th:text="${error_message}"></div>
+    <main id="main-content" tabindex="-1">
+      <div layout:fragment="content">Main page body goes here...</div>
+    </main>
+  </div>
+</body>
+</html>

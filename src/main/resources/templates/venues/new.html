@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layouts/default}">
+<head><title>Add a new venue</title></head>
+<body>
+<div layout:fragment="content">
+  <h1>Add a new venue</h1>
+  <p class="form-text">Fields marked with * are required.</p>
+  <form th:action="@{/venues}" th:object="${venue}" method="post">
+    <div class="alert alert-danger" role="alert" th:if="${#fields.hasAnyErrors()}">Please correct the highlighted fields.</div>
+    <div class="mb-3">
+      <label class="form-label" for="name">Venue Name <span class="text-danger">*</span></label>
+      <input class="form-control" type="text" th:field="*{name}" id="name" required maxlength="255" th:attr="aria-invalid=${#fields.hasErrors('name')},aria-describedby=${#fields.hasErrors('name') ? 'name-error' : null}">
+      <p id="name-error" class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></p>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="road">Road <span class="text-danger">*</span></label>
+      <input class="form-control" type="text" th:field="*{road}" id="road" required maxlength="299" th:attr="aria-invalid=${#fields.hasErrors('road')},aria-describedby=${#fields.hasErrors('road') ? 'road-error' : null}">
+      <p id="road-error" class="text-danger" th:if="${#fields.hasErrors('road')}" th:errors="*{road}"></p>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="postcode">Postcode <span class="text-danger">*</span></label>
+      <input class="form-control" type="text" th:field="*{postcode}" id="postcode" required maxlength="255" th:attr="aria-invalid=${#fields.hasErrors('postcode')},aria-describedby=${#fields.hasErrors('postcode') ? 'postcode-error' : null}">
+      <p id="postcode-error" class="text-danger" th:if="${#fields.hasErrors('postcode')}" th:errors="*{postcode}"></p>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="capacity">Capacity <span class="text-danger">*</span></label>
+      <input class="form-control" type="number" th:field="*{capacity}" id="capacity" required min="1" step="1" th:attr="aria-invalid=${#fields.hasErrors('capacity')},aria-describedby=${#fields.hasErrors('capacity') ? 'capacity-error' : null}">
+      <p id="capacity-error" class="text-danger" th:if="${#fields.hasErrors('capacity')}" th:errors="*{capacity}"></p>
+    </div>
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-warning" th:href="@{/venues}">Cancel</a>
+  </form>
+</div>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security" layout:decorate="~{layouts/default}">
+<head>
+  <title>Event Details</title>
+  <link th:if="${!#strings.isEmpty(mapboxToken)}" href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+  <script th:if="${!#strings.isEmpty(mapboxToken)}" src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+</head>
+<body>
+<div layout:fragment="content">
+  <h1 th:text="${event.name}">Event Name</h1>
+  <p><strong>Date:</strong> <span th:text="${event.date}"></span></p>
+  <p><strong>Time:</strong> <span th:text="${event.time ?: 'Not specified'}"></span></p>
+  <p><strong>Venue:</strong> <a th:if="${event.venue != null}" th:href="@{/events/{id}/venue(id=${event.id})}" th:text="${event.venue.name}"></a><span th:if="${event.venue == null}">Unknown</span></p>
+  <p><strong>Description:</strong></p>
+  <p class="event-description" th:text="${#strings.isEmpty(event.description) ? 'No description available' : event.description}"></p>
+  <div class="d-flex flex-wrap gap-2 mt-4">
+    <a th:href="@{/events}" class="btn btn-secondary">Return to events</a>
+    <form sec:authorize="hasRole('ADMINISTRATOR')" th:action="@{/events/{id}(id=${event.id})}" th:method="delete" class="mb-0">
+      <button type="submit" class="btn btn-danger">Delete</button>
+    </form>
+    <a class="btn btn-primary" th:href="@{/events/update/{id}(id=${event.id})}" sec:authorize="hasRole('ADMINISTRATOR')">Update</a>
+  </div>
+  <div class="alert alert-success mt-3" role="status" th:if="${success == true}">Your post: <strong th:text="${message}"></strong> was posted.</div>
+  <div sec:authorize="hasRole('ADMINISTRATOR')">
+    <p th:unless="${mastodonAvailable == true}" class="text-muted mt-4">Social sharing is currently unavailable.</p>
+    <form th:if="${mastodonAvailable == true}" th:action="@{/events/{id}(id=${event.id})}" method="post" class="mt-4">
+      <label for="postEvent" class="form-label">Share the event <span class="text-danger">*</span></label>
+      <input class="form-control" type="text" name="m" id="postEvent" th:value="${success == true ? '' : message}" th:placeholder="'#' + ${event.name}" required maxlength="500" pattern=".*\S.*" aria-describedby="post-help">
+      <p id="post-help" class="form-text">Post a message of up to 500 characters to the event account.</p>
+      <button class="btn btn-primary" type="submit">Submit Post</button>
+    </form>
+  </div>
+  <h2 class="mt-4">Event location</h2>
+  <p id="event-map-status" class="text-muted" role="status">Loading event location…</p>
+  <div id="event-map" class="event-map" role="region" aria-label="Event location"></div>
+  <script th:src="@{/js/event-maps.js}"></script>
+  <script th:inline="javascript">
+    const eventForMap = /*[[${event}]]*/ {};
+    EventLiteMaps.init({ containerId: 'event-map', statusId: 'event-map-status',
+      events: [eventForMap], token: /*[[${mapboxToken}]]*/ '', upcomingOnly: false });
+  </script>
+</div>
+</body>
+</html>

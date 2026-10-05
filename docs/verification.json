@@ -1,0 +1,22 @@
+{
+  "verifiedDate": "2026-10-05",
+  "javaVersion": "17.0.13",
+  "mavenVersion": "3.9.9",
+  "javaTests": 212,
+  "javaFailures": 0,
+  "javaErrors": 0,
+  "javaSkipped": 0,
+  "javaScriptTests": 10,
+  "javaScriptFailures": 0,
+  "lineCoveragePercent": 95.24,
+  "branchCoveragePercent": 72.68,
+  "browserChecks": [
+    "desktop1440",
+    "mobile390",
+    "login",
+    "create-update-delete-same-id",
+    "no-js-errors"
+  ],
+  "externalApisCalled": false,
+  "database": "isolated in-memory demo and test databases"
+}
