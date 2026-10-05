@@ -1,6 +1,6 @@
 # EventLite — 프로젝트 과정과 개인 기여
 
-EventLite는 맨체스터대학교 COMP23412 Software Engineering 수업의 행사·장소 관리 팀 프로젝트입니다. 이 문서는 팀의 전체 구현, 박동명의 개인 기여, 팀 과제 이후의 유지보수 결과를 구분해 설명합니다. 실행 명령은 [README](../README.md), 코드 위치와 환경 설정은 [구조 문서](ARCHITECTURE.md)에서 확인할 수 있습니다.
+EventLite는 맨체스터대학교 COMP23412 Software Engineering 수업의 행사·장소 관리 팀 프로젝트입니다. 이 문서는 팀의 전체 구현, 박동명의 개인 기여, 팀 과제 이후의 유지보수 결과를 구분해 설명합니다. 실행 명령은 [한국어 README](../README.ko.md), 코드 위치와 환경 설정은 [구조 문서](ARCHITECTURE.md)에서 확인할 수 있습니다.
 
 [GitHub 저장소](https://github.com/Dongmyung378/Event-Website) · [개인 포트폴리오 소개](https://park-dongmyung.com/projects/project-10/)
 
@@ -92,4 +92,4 @@ Java 검증에는 단위·컨트롤러·통합·보안 테스트가 포함됩니
 
 공개 서비스를 운영한다면 TLS, 운영 DB와 백업, 관리자 계정 관리, 요청 제한과 의존성 업데이트를 운영 환경에 맞게 구성해야 합니다. 실제 지도·소셜 계정의 연동은 해당 계정 설정을 사용하는 환경에서 추가로 확인해야 합니다.
 
-과목 제공 기본 코드의 출처와 BSD 라이선스는 [README의 출처](../README.md#출처와-라이선스) 및 [원본 라이선스](../LICENSE)에 유지합니다.
+과목 제공 기본 코드의 출처와 BSD 라이선스는 [한국어 README의 출처](../README.ko.md#출처와-라이선스) 및 [원본 라이선스](../LICENSE)에 유지합니다.
