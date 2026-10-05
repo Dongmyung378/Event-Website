@@ -1,95 +1,97 @@
-# EventLite — 프로젝트 과정과 개인 기여
+[English](PORTFOLIO.md) | [한국어](PORTFOLIO.ko.md)
 
-EventLite는 맨체스터대학교 COMP23412 Software Engineering 수업의 행사·장소 관리 팀 프로젝트입니다. 이 문서는 팀의 전체 구현, 박동명의 개인 기여, 팀 과제 이후의 유지보수 결과를 구분해 설명합니다. 실행 명령은 [한국어 README](../README.ko.md), 코드 위치와 환경 설정은 [구조 문서](ARCHITECTURE.md)에서 확인할 수 있습니다.
+# EventLite — Project Process and Individual Contribution
 
-[GitHub 저장소](https://github.com/Dongmyung378/Event-Website) · [개인 포트폴리오 소개](https://park-dongmyung.com/projects/project-10/)
+EventLite is an event and venue management team project for COMP23412 Software Engineering at the University of Manchester. This document distinguishes the complete team implementation, Dongmyung Park's individual contribution, and subsequent maintenance. See the [README](../README.md) for run commands and the [architecture document](ARCHITECTURE.md) for code locations and environment settings.
 
-## 진행 기간과 작업 구분
+[GitHub repository](https://github.com/Dongmyung378/Event-Website) · [Project on my portfolio](https://park-dongmyung.com/projects/project-10/)
 
-| 구분 | 기간 또는 확인 시점 | 내용 |
+## Timeline and Work Scope
+
+| Stage | Period or verification date | Work |
 | --- | --- | --- |
-| 원래 팀 프로젝트 | 2025년 2월~5월 | 제공된 EventLite 기본 코드 위에 행사·장소 관리 서비스 구현 |
-| 이후 유지보수 | 2026-10-05 검증 | 코드 검토에서 발견한 오류 수정, 외부 연동 설정 분리, 회귀 테스트와 실행 자료 보강 |
+| Original team project | February–May 2025 | Implemented event and venue management on the supplied EventLite starter code |
+| Subsequent maintenance | Verified on 2026-10-05 | Fixed issues found during code review, separated external service settings, and improved regression tests and run documentation |
 
-현재 저장소는 두 시기의 작업을 포함합니다. 현재의 테스트 수와 커버리지는 2026-10-05 유지보수 버전의 기록이며, 2025년 과제 당시의 수치로 소급하지 않습니다.
+The current repository includes work from both stages. The test counts and coverage figures describe the maintenance version verified on 2026-10-05 and are not presented as results from the original 2025 assignment.
 
-## 개인 역할
+## Individual Role
 
-**박동명은 테스트 케이스 작성, 보안 관련 구현, 지도 연결을 제외한 주요 기본 기능 구현에 참여했습니다.** 행사·장소 관리 등 기본 기능을 구현하고 검증하는 작업을 맡았으며, 지도 연결은 다른 팀원이 담당했습니다.
+**Dongmyung Park contributed test cases, security implementation, and core functionality other than map integration.** His work included implementing and verifying features such as event and venue management. Map integration was handled by another team member.
 
-| 참여 영역 | 설명 |
+| Contribution area | Description |
 | --- | --- |
-| 테스트 케이스 | 행사·장소 조회와 변경, 필수 입력값, 없는 대상, 데이터 관계 등 기능 조건을 검증하는 테스트 작성 |
-| 보안 | 로그인과 관리 기능 접근 제어 등 보안 관련 구현 |
-| 주요 기본 기능 | 행사·장소 관리 등 서비스의 기본 기능 구현과 검증 |
-| 팀의 지도 기능 | 다른 팀원의 담당 영역. 전체 서비스의 기능으로 소개 |
+| Test cases | Tests for event and venue queries and changes, required inputs, missing targets, data relationships, and other functional conditions |
+| Security | Security-related implementation, including login and access control for management features |
+| Core functionality | Implementation and verification of the service's core features, including event and venue management |
+| Team map feature | Another team member's responsibility; presented as a feature of the complete service |
 
-팀의 전체 결과를 개인 단독 개발로 소개하지 않습니다. 아래 구조와 유지보수 내용도 현재 서비스에 대한 설명이며, 각 소스 파일이나 이후 추가된 모든 테스트를 개인의 원래 기여로 단정하지 않습니다.
+The complete service is the team's work. The architecture and maintenance sections below describe the current service and do not attribute every source file or all subsequently added tests to an individual's original contribution.
 
-## 해결하려던 문제
+## Problem to Solve
 
-행사는 날짜·시간·설명과 장소를 함께 관리해야 합니다. 방문자는 행사 이름으로 검색하고 장소별 일정을 확인해야 하며, 관리자는 내용을 등록·수정·삭제할 수 있어야 합니다. 장소에 행사가 남아 있을 때 삭제를 막는 등 데이터 관계를 유지하는 규칙도 필요했습니다.
+Events need dates, times, descriptions, and venues to be managed together. Visitors need to search by event name and browse venue schedules, while administrators need to create, update, and delete records. Data relationships also require rules such as preventing the deletion of a venue that still has events.
 
-같은 데이터를 웹 화면과 API에서 조회하되, 변경 기능은 관리자에게만 허용해야 합니다. 로그인 상태에 따라 버튼을 표시하는 것과 서버에서 요청의 권한을 검사하는 것을 함께 구현해야 했습니다. 외부 지도·소셜 서비스는 기본 기능에 추가되는 기능이므로 계정 설정이나 응답 실패 때문에 기본 조회·관리 흐름이 깨지지 않도록 처리할 필요가 있었습니다.
+The same data needs to be available through web pages and an API, while changes must be restricted to administrators. This requires both displaying controls according to login state and checking authorization on the server. Maps and social services extend the core functionality, so account configuration or failed responses should not break basic browsing and management flows.
 
-## 구현 접근
+## Implementation Approach
 
-1. `Event`와 `Venue`의 관계를 정의하고 JPA 저장소를 통해 데이터를 조회·저장했습니다.
-2. MVC 컨트롤러와 Thymeleaf 폼으로 목록·검색·상세 화면과 CRUD 흐름을 연결했습니다.
-3. 웹 변경 요청에 인증과 역할, CSRF 검사를 적용했습니다.
-4. HTML과 읽기 전용 HAL JSON API가 같은 서비스 계층을 사용하도록 구성했습니다.
-5. 서비스 단위 테스트와 컨트롤러 테스트, 실제 HTTP 통합 테스트를 구분해 기능과 요청 흐름을 확인했습니다.
+1. Defined the relationship between `Event` and `Venue` and used JPA repositories to query and persist data.
+2. Connected lists, search, detail pages, and CRUD flows through MVC controllers and Thymeleaf forms.
+3. Applied authentication, roles, and CSRF checks to web requests that change data.
+4. Used a shared service layer for HTML pages and the read-only HAL JSON API.
+5. Separated service unit tests, controller tests, and real HTTP integration tests to verify functionality and request flows.
 
-기본 CRUD만으로는 사용자가 겪을 수 있는 모든 조건을 설명할 수 없었습니다. 유지보수에서는 데이터가 적거나, 날짜가 바뀌거나, 외부 요청이 실패하는 조건을 별도로 재현해 수정했습니다.
+Basic CRUD alone did not cover every condition a user could encounter. Maintenance work reproduced and fixed conditions involving small datasets, changing dates, and failed external requests.
 
-## 유지보수에서 개선한 조건
+## Conditions Improved During Maintenance
 
-다음 표는 2026-10-05에 검증한 현재 버전에 반영된 개선입니다.
+The following changes are included in the current version verified on 2026-10-05.
 
-| 조건 | 확인한 문제 | 현재 처리 |
+| Condition | Issue found | Current handling |
 | --- | --- | --- |
-| 삭제·소셜 게시 요청 | 화면의 관리 버튼과 실제 HTTP 경로의 보호 범위가 다름 | 실제 메서드·경로에 관리자 역할 검사, 정의되지 않은 요청은 차단 |
-| 설정된 계정 정보 | 토큰과 관리자 계정이 코드에 고정됨 | 환경 변수 설정, 명시적인 데모·테스트 계정 분리 |
-| 지도 팝업 | 저장된 이름을 HTML 문자열로 삽입함 | DOM과 `textContent`로 이름을 텍스트로 표시 |
-| 10~12월과 당일 행사 | 날짜 계산과 예정 행사 기준이 다름 | 공통 날짜 처리와 월·연도 경계 테스트 |
-| 장소가 0~2개 | 인기 장소 조회에서 항상 3개를 인덱싱함 | 실제 개수에 맞춰 최대 3개 반환 |
-| 같은 날짜의 여러 행사 | 다음 행사 조회에서 시간 순서를 충분히 반영하지 못함 | 날짜·시간·이름 순으로 정렬하고 최대 3개 반환 |
-| 수정 요청의 ID | 폼 ID와 URL ID가 충돌할 수 있음 | URL ID로 기존 대상을 조회하고 허용된 필드만 수정 |
-| 주소 변경과 조회 실패 | 새 주소에 이전 좌표가 남음 | 변경된 주소의 좌표를 얻지 못하면 이전 좌표 제거 |
-| 소셜 게시 실패 | 실패를 성공으로 표시하거나 존재 확인 전에 게시함 | 존재 확인·입력 검증 후 게시, 실패 안내 표시 |
-| 초기 데이터와 날짜 | 일부 장소만 존재하거나 성공 테스트의 날짜가 과거가 됨 | null 장소 참조 없는 데모 초기화와 상대 날짜 기반 데이터 |
+| Deletion and social posting requests | Management controls and actual HTTP routes had different protection coverage | Administrator role checks on the actual methods and routes; undefined requests denied |
+| Account settings | Tokens and administrator accounts were hardcoded | Environment variable configuration and separate, explicit demo and test accounts |
+| Map popups | Stored names were inserted as HTML strings | DOM and `textContent` display names as text |
+| October–December and events on the current day | Date calculations and upcoming-event rules were inconsistent | Shared date handling and month and year boundary tests |
+| Zero to two venues | Popular-venue lookup always indexed three entries | Returns up to three entries according to the actual dataset size |
+| Multiple events on the same date | Next-event lookup did not adequately account for time order | Sorts by date, time, and name, then returns up to three entries |
+| IDs in update requests | Form IDs could conflict with URL IDs | Loads the existing target using the URL ID and updates only allowed fields |
+| Address changes and failed lookups | Previous coordinates remained attached to a new address | Removes previous coordinates when coordinates for the changed address cannot be obtained |
+| Failed social posts | Failures appeared successful, or posting occurred before checking that the event existed | Checks existence and input before posting, then displays failure feedback when needed |
+| Initial data and dates | Only some venues existed, or dates in successful tests had become past dates | Demo initialization without null venue references and data based on relative dates |
 
-지도의 최초 연결은 팀원의 기여이고, 이후 지도 관련 경계 조건의 수정·검증은 유지보수 작업입니다. 이 두 작업을 같은 시기의 개인 기여로 합치지 않습니다.
+The initial map integration was a team member's contribution. Later fixes and verification of map boundary conditions belong to subsequent maintenance. These are kept separate when describing individual contribution and project timing.
 
-## 유지보수 검증
+## Maintenance Verification
 
-검증 날짜는 **2026-10-05**입니다. [검증 기록 JSON](verification.json)에 실행 환경과 결과를 보관했습니다.
+The verification date is **2026-10-05**. The [verification JSON](verification.json) records the execution environment and results.
 
-| 항목 | 기록 |
+| Item | Record |
 | --- | --- |
-| 실행 환경 | JDK 17.0.13, Maven 3.9.9 |
-| Java | 212개 통과, 실패·오류·skip 0개 |
-| JavaScript | 10개 통과, 실패 0개 |
-| 전체 Java 선 커버리지 | 95.24% |
-| 전체 Java 분기 커버리지 | 72.68% |
-| 브라우저 | 로그인, 행사 생성 → 같은 ID 수정 → 삭제 |
-| 화면 크기 | PC 1440px, 모바일 390px에서 가로 넘침 없음 |
-| 브라우저 JavaScript 오류 | 0개 |
+| Environment | JDK 17.0.13, Maven 3.9.9 |
+| Java | 212 passed; 0 failures, errors, or skipped tests |
+| JavaScript | 10 passed; 0 failures |
+| Overall Java line coverage | 95.24% |
+| Overall Java branch coverage | 72.68% |
+| Browser | Login and event creation → update with the same ID → deletion |
+| Layout widths | Desktop at 1440px and mobile at 390px; no horizontal overflow |
+| Browser JavaScript errors | 0 |
 
-Java 검증에는 단위·컨트롤러·통합·보안 테스트가 포함됩니다. JavaScript 검증은 지도 날짜 경계, 빈 결과, 좌표 0과 잘못된 좌표, 팝업 텍스트, 지도 초기화 실패 등을 확인합니다. 테스트는 별도 메모리 DB와 가짜 HTTP 응답을 사용하며 실제 외부 서비스 계정에는 요청하지 않았습니다.
+Java verification includes unit, controller, integration, and security tests. JavaScript verification checks map date boundaries, empty results, zero and invalid coordinates, popup text, and map initialization failures. Tests use separate in-memory databases and simulated HTTP responses, without requests to real external service accounts.
 
-커버리지는 실행한 코드의 비율이며, 기능 정확성이나 운영 안정성 전체를 뜻하지 않습니다. 특히 실제 Mapbox·Mastodon 계정의 응답, 운영 트래픽, 운영 DB·백업, 다양한 실제 모바일 기기의 동작까지 이 기록으로 보장하지 않습니다. GitHub CI 결과도 이 로컬 실행 기록과 별개입니다.
+Coverage measures the proportion of code executed; it does not establish complete functional correctness or operational stability. In particular, these records do not guarantee responses from real Mapbox or Mastodon accounts, production traffic behavior, production database and backup operations, or behavior on a wide range of physical mobile devices. GitHub CI results are separate from this local execution record.
 
-## 회고
+## Retrospective
 
-권한 검사는 화면 표시보다 실제 요청의 메서드와 경로를 기준으로 확인해야 합니다. 사용자가 버튼을 보지 못하는 것과 서버가 변경 요청을 거절하는 것은 서로 다른 조건이었습니다.
+Authorization should be verified against actual request methods and routes, as well as what the interface displays. Hiding a button from a user and having the server reject a change request are different conditions.
 
-정상 데이터로 통과하는 테스트만으로는 부족한 데이터 수, 날짜 변경, 외부 요청 실패를 찾기 어렵습니다. 실패 조건을 직접 재현하고 같은 조건을 회귀 테스트로 남기는 것이 수정의 효과를 확인하는 데 도움이 됐습니다.
+Tests that pass with normal data can miss small datasets, changing dates, and external request failures. Reproducing failure conditions and retaining them as regression tests made it possible to verify the effect of fixes.
 
-팀 프로젝트를 소개할 때도 전체 기능, 개인 역할, 이후 유지보수를 구분해야 합니다. 이 저장소는 그 구분을 유지하면서 실행 방법과 검증 기록을 제공하는 포트폴리오 자료입니다.
+Presenting a team project also requires distinguishing the complete functionality, individual roles, and subsequent maintenance. This repository maintains those distinctions while providing run instructions and verification records as portfolio material.
 
-## 다음 운영 단계
+## Next Operational Steps
 
-공개 서비스를 운영한다면 TLS, 운영 DB와 백업, 관리자 계정 관리, 요청 제한과 의존성 업데이트를 운영 환경에 맞게 구성해야 합니다. 실제 지도·소셜 계정의 연동은 해당 계정 설정을 사용하는 환경에서 추가로 확인해야 합니다.
+A public deployment needs TLS, a production database and backups, administrator account management, request limits, and dependency updates appropriate to its environment. Real map and social account integrations need additional verification in an environment using the relevant account settings.
 
-과목 제공 기본 코드의 출처와 BSD 라이선스는 [한국어 README의 출처](../README.ko.md#출처와-라이선스) 및 [원본 라이선스](../LICENSE)에 유지합니다.
+Attribution for the supplied course code and its BSD license are retained in the [README attribution section](../README.md#attribution-and-license) and the [original license](../LICENSE).

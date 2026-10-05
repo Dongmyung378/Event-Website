@@ -19,7 +19,7 @@ The verification figures and fixes below describe the **maintenance version veri
 
 ![EventLite local demo home](docs/images/eventlite-home.png)
 
-[Project process and individual contribution — Korean](docs/PORTFOLIO.md) · [Architecture and source guide — Korean](docs/ARCHITECTURE.md) · [Verification record](docs/verification.json)
+[Project process and individual contribution](docs/PORTFOLIO.md) · [Architecture and source guide](docs/ARCHITECTURE.md) · [Verification record](docs/verification.json)
 
 ## Features
 
@@ -35,7 +35,7 @@ The verification figures and fixes below describe the **maintenance version veri
 
 Java 17 · Spring Boot · Spring MVC · Spring Security · Spring Data JPA · Thymeleaf · H2 · Bootstrap · JUnit 5 · Mockito · MockMvc · WebTestClient · JaCoCo
 
-The MVC pages and read-only HAL API share the same services and JPA repositories. Creation, updates, and deletion go through HTML management flows protected by administrator authorization and CSRF checks. Package responsibilities and design decisions are described in the [architecture document — Korean](docs/ARCHITECTURE.md).
+The MVC pages and read-only HAL API share the same services and JPA repositories. Creation, updates, and deletion go through HTML management flows protected by administrator authorization and CSRF checks. Package responsibilities and design decisions are described in the [architecture document](docs/ARCHITECTURE.md).
 
 ## Run locally
 
@@ -58,7 +58,7 @@ Open `http://localhost:8080/home`. The demo credentials are `demo-admin` / `demo
 
 The normal profile has no default administrator account. Set the `EVENTLITE_ADMIN_USERNAME` and `EVENTLITE_ADMIN_PASSWORD` environment variables to use management features. Passwords are encoded with BCrypt for authentication. To open an existing file database, set the environment variables for that database's username and password.
 
-`.env.example` documents the settings and is not loaded automatically. See the [environment configuration guide — Korean](docs/ARCHITECTURE.md#환경-설정) for database, authentication, external service, and Mapbox settings. The local demo's core browsing and management features work without external service accounts.
+`.env.example` documents the settings and is not loaded automatically. See the [environment configuration guide](docs/ARCHITECTURE.md#environment-configuration) for database, authentication, external service, and Mapbox settings. The local demo's core browsing and management features work without external service accounts.
 
 ## Maintenance verification — 2026-10-05
 
@@ -78,7 +78,7 @@ On macOS / Linux, use `sh ./mvnw verify`. Tests use the `test` profile's in-memo
 | Browser | Login and event creation → update with the same ID → deletion; 0 JavaScript errors |
 | Layout | Desktop at 1440px and mobile at 390px; no horizontal overflow |
 
-Tests used a separate in-memory database and simulated external responses. No real external account APIs were called. Detailed Java results are generated under `target/surefire-reports/`, and coverage is generated at `target/site/jacoco/index.html`. The [verification and retrospective — Korean](docs/PORTFOLIO.md#유지보수-검증) describes the scope and limitations; the recorded results are in [verification.json](docs/verification.json).
+Tests used a separate in-memory database and simulated external responses. No real external account APIs were called. Detailed Java results are generated under `target/surefire-reports/`, and coverage is generated at `target/site/jacoco/index.html`. The [verification and retrospective](docs/PORTFOLIO.md#maintenance-verification) describes the scope and limitations; the recorded results are in [verification.json](docs/verification.json).
 
 GitHub Actions configuration is included. The figures above are from local execution and are separate from GitHub CI results.
 
@@ -88,7 +88,7 @@ GitHub Actions configuration is included. The figures above are from local execu
 
 ## Improvements after the team assignment
 
-Maintenance fixes addressed missing authorization checks, small venue datasets, date boundaries, HTML insertion in map popups, stale coordinates after address changes, and incorrect reporting of failed external posts. Regression tests were added. The conditions and results are documented in the [project retrospective — Korean](docs/PORTFOLIO.md#유지보수에서-개선한-조건).
+Maintenance fixes addressed missing authorization checks, small venue datasets, date boundaries, HTML insertion in map popups, stale coordinates after address changes, and incorrect reporting of failed external posts. Regression tests were added. The conditions and results are documented in the [project retrospective](docs/PORTFOLIO.md#conditions-improved-during-maintenance).
 
 ## Publication scope and remaining operational work
 

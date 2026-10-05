@@ -1,15 +1,17 @@
-# EventLite — 구조와 소스 코드 안내
+[English](ARCHITECTURE.md) | [한국어](ARCHITECTURE.ko.md)
 
-이 문서는 현재 유지보수 버전의 구조를 설명합니다. 프로젝트 기간과 개인 기여는 [포트폴리오 문서](PORTFOLIO.md), 실행 명령과 검증 결과 요약은 [한국어 README](../README.ko.md)에 있습니다.
+# EventLite — Architecture and Source Guide
 
-## 요청과 데이터 흐름
+This document describes the current maintenance version. See the [portfolio document](PORTFOLIO.md) for project timing and individual contribution, and the [README](../README.md) for run commands and a summary of verification results.
+
+## Request and Data Flow
 
 ```mermaid
 flowchart TD
-    Browser[브라우저] --> Security[Spring Security]
-    Client[API 클라이언트] --> Security
+    Browser[Browser] --> Security[Spring Security]
+    Client[API client] --> Security
     Security --> MVC[MVC Controller]
-    Security --> API[읽기 전용 HAL Controller]
+    Security --> API[Read-only HAL Controller]
     MVC --> Services[EventService / VenueService]
     API --> Services
     Services --> Repository[JPA Repository]
@@ -22,105 +24,105 @@ flowchart TD
     Mastodon --> HTTP
 ```
 
-공개 조회 요청과 관리자 변경 요청을 보안 필터에서 구분합니다. HTML 화면과 JSON API는 같은 행사·장소 서비스를 사용하되 응답 형식은 각 컨트롤러가 맡습니다. 외부 지도·소셜 요청에는 별도 HTTP 어댑터를 사용합니다.
+The security filter distinguishes public queries from changes by administrators. HTML pages and the JSON API use the same event and venue services, while each controller handles its response format. External map and social requests use a separate HTTP adapter.
 
-## 소스 폴더 안내
+## Source Folder Guide
 
-Java 패키지의 기준 경로는 `src/main/java/uk/ac/man/cs/eventlite/`입니다.
+The Java package base is `src/main/java/uk/ac/man/cs/eventlite/`.
 
-| 위치 | 역할과 먼저 읽을 파일 |
+| Location | Responsibilities and files to read first |
 | --- | --- |
-| `entities/` | `Event.java`, `Venue.java`: 행사·장소 필드, 입력 제약과 JPA 관계 |
-| `controllers/` | `EventsController`, `VenuesController`, `HomeController`: HTML 조회·폼 처리 |
-| `controllers/*ControllerApi` | 행사·장소의 공개 조회와 HAL 응답 |
-| `controllers/ApiController.java` | `/api` 조회 진입점 |
-| `dao/` | 행사·장소 서비스와 JPA 저장소. 소셜 어댑터 `MastodonService`도 이 패키지에 위치 |
-| `assemblers/` | 엔티티에 조회 링크를 추가하는 HAL 모델 구성 |
-| `config/Security.java` | 공개 경로, 관리자 역할, CSRF, 인증·로그아웃 설정 |
-| `config/IntegrationViewConfig.java` | 지도 공개 토큰, 연동 가능 여부, 공통 날짜 모델 |
-| `config/data/InitialDataLoader.java` | `demo` 프로필의 초기 데이터 생성 |
-| `services/` | `GeocodingService`, `Coordinates`, 제한 시간 적용 HTTP 클라이언트 |
-| `src/main/resources/templates/` | 공통 레이아웃, 행사·장소·로그인 화면 |
-| `src/main/resources/static/js/event-maps.js` | 지도 표시 조건, 좌표 검증과 팝업 생성 |
-| `src/main/resources/application*.properties` | 일반·데모 환경 설정 |
-| `src/test/java/` | 서비스·MVC·API·보안·외부 어댑터 테스트와 테스트 DB 구성 |
-| `src/test/javascript/event-maps.test.cjs` | 지도 로직의 JavaScript 회귀 테스트 |
-| `docs/images/`, `docs/verification.json` | 유지보수 검증 당시 화면과 결과 기록 |
+| `entities/` | `Event.java`, `Venue.java`: event and venue fields, input constraints, and JPA relationships |
+| `controllers/` | `EventsController`, `VenuesController`, `HomeController`: HTML queries and form handling |
+| `controllers/*ControllerApi` | Public queries and HAL responses for events and venues |
+| `controllers/ApiController.java` | Entry point for `/api` queries |
+| `dao/` | Event and venue services and JPA repositories; also contains the social adapter `MastodonService` |
+| `assemblers/` | HAL model construction that adds query links to entities |
+| `config/Security.java` | Public routes, administrator roles, CSRF, authentication, and logout settings |
+| `config/IntegrationViewConfig.java` | Public map token, integration availability, and shared date model |
+| `config/data/InitialDataLoader.java` | Initial data creation for the `demo` profile |
+| `services/` | `GeocodingService`, `Coordinates`, and the HTTP client with time limits |
+| `src/main/resources/templates/` | Shared layout and event, venue, and login pages |
+| `src/main/resources/static/js/event-maps.js` | Map display conditions, coordinate validation, and popup creation |
+| `src/main/resources/application*.properties` | Normal and demo environment settings |
+| `src/test/java/` | Service, MVC, API, security, and external adapter tests, plus test database configuration |
+| `src/test/javascript/event-maps.test.cjs` | JavaScript regression tests for map logic |
+| `docs/images/`, `docs/verification.json` | Screenshots and result records from maintenance verification |
 
-## 데이터 모델과 일정 규칙
+## Data Model and Scheduling Rules
 
-하나의 행사는 하나의 장소에 연결되고, 한 장소에는 여러 행사가 연결됩니다. 행사에는 이름, 날짜, 선택적인 시간과 설명이 있습니다. 장소는 이름, 수용 인원, 도로 주소, 우편번호, 선택적인 위도·경도를 저장합니다.
+Each event is associated with one venue, and a venue can have multiple events. An event has a name, a date, and optional time and description fields. A venue stores its name, capacity, road address, postcode, and optional latitude and longitude.
 
-신규 등록과 수정 폼은 필수값·길이·날짜를 검증합니다. 행사에 선택한 장소가 실제로 존재하는지도 확인하며 DB의 행사 장소 외래키는 null을 허용하지 않습니다. 연결된 행사가 남아 있는 장소의 삭제 요청은 안내 메시지와 함께 거절합니다.
+Creation and update forms validate required values, lengths, and dates. They also check that the selected venue exists; the database foreign key for an event's venue does not allow null. A request to delete a venue with associated events is rejected with an explanatory message.
 
-폼의 행사 날짜는 미래 날짜를 요구합니다. 이미 저장된 행사가 당일이 됐을 때는 예정 행사에 포함하므로 예정 목록의 기준은 **오늘 이후가 아니라 오늘을 포함한 날짜**입니다. 다음 3개 행사는 날짜·시간·이름 순서로 정렬하며 시간이 없는 행사는 같은 날짜에서 뒤에 배치합니다. 인기 장소는 연결된 행사 수를 기준으로 정렬하고 실제 데이터 개수에 맞춰 최대 3개만 반환합니다.
+Event forms require a future date. When an already stored event reaches the current day, it remains upcoming, so the upcoming list **includes today**. The next three events are sorted by date, time, and name, with events that have no time placed last within the same date. Popular venues are sorted by the number of associated events and return up to three entries according to the actual dataset size.
 
-## 주요 설계 선택
+## Key Design Decisions
 
-### 공개 조회와 관리자 변경 분리
+### Separate Public Queries from Administrator Changes
 
-목록·검색·상세 및 API 조회는 공개합니다. HTML 관리 폼과 실제 생성·수정·삭제·소셜 게시 요청에는 `ADMINISTRATOR` 역할을 요구하고 변경 요청에는 CSRF 검사를 유지합니다. 정의하지 않은 접근과 H2 콘솔은 차단합니다.
+Lists, search, details, and API queries are public. HTML management forms and actual creation, update, deletion, and social posting requests require the `ADMINISTRATOR` role. CSRF checks remain enabled for requests that change data. Undefined access and the H2 console are denied.
 
-화면에서도 관리자에게 관리 기능을 표시하지만, 서버의 권한 검사가 변경 요청을 보호합니다. 단순히 버튼을 감추는 것만으로 변경 권한을 제어하지 않습니다.
+The interface also shows management controls to administrators, while server authorization protects change requests. Hiding buttons alone does not control change permissions.
 
-### 명시적인 읽기 전용 API
+### An Explicitly Read-Only API
 
-JPA 저장소의 자동 REST 노출을 사용하지 않습니다. 직접 정의한 API 컨트롤러가 행사·장소와 관계를 조회하고 모델 어셈블러가 링크를 구성합니다. API 쓰기 요청은 관리자에게도 허용하지 않으며, 변경은 검증을 적용한 웹 관리 흐름에서 수행합니다.
+JPA repositories are not automatically exposed through REST. Explicit API controllers query events, venues, and their relationships, and model assemblers build links. API writes are not allowed even for administrators; changes go through the validated web management flow.
 
-### URL ID와 허용된 입력 필드
+### URL IDs and Allowed Input Fields
 
-수정 요청은 URL의 ID로 기존 대상을 조회한 뒤 허용된 필드만 변경합니다. 폼의 ID가 URL과 달라도 다른 대상을 수정하지 않으며, 없는 대상은 404로 응답합니다. 신규 등록에서는 제출된 ID를 무시해 새 레코드를 생성합니다.
+An update request loads the existing target using the URL ID, then changes only allowed fields. A form ID that differs from the URL does not update a different target, and a missing target returns 404. Creation ignores a submitted ID and creates a new record.
 
-### 주소와 좌표의 관계
+### The Relationship Between Addresses and Coordinates
 
-주소가 바뀌면 이전 주소의 좌표를 제거합니다. 새 좌표를 얻지 못해도 이전 위치를 새 주소의 위치로 표시하지 않습니다. 주소가 그대로이고 유효한 좌표가 있으면 추가 지오코딩 요청을 생략합니다. 좌표가 없는 경우에도 기본 행사·장소 기능은 사용할 수 있습니다.
+Changing an address removes the coordinates for its previous address. If new coordinates cannot be obtained, the old location is not displayed as the location of the new address. An unchanged address with valid coordinates skips an additional geocoding request. Core event and venue features remain usable without coordinates.
 
-### 선택적인 외부 서비스
+### Optional External Services
 
-외부 계정 설정이 없으면 연동을 비활성화하고 화면에 안내합니다. HTTP 요청에 제한 시간을 적용하고 시간 초과 또는 중단 시 진행 중인 요청을 취소합니다. 어댑터 테스트에서는 실제 계정 대신 가짜 응답을 사용합니다.
+Without external account settings, integrations are disabled and the interface displays guidance. HTTP requests have time limits, and requests in progress are cancelled on timeout or interruption. Adapter tests use simulated responses rather than real accounts.
 
-Mastodon 피드는 설정된 계정의 공개 게시물만 표시합니다. 게시 요청은 행사 존재와 입력을 확인한 뒤 수행하며, 실패를 성공 메시지로 표시하지 않습니다. 브라우저 지도 토큰과 서버 지오코딩 토큰은 별도 설정으로 다룹니다.
+The Mastodon feed displays only public posts from the configured account. Posting checks event existence and input before sending the request, and a failed post is not reported as successful. Browser map tokens and server geocoding tokens use separate settings.
 
-지도 팝업은 저장된 행사·장소 이름을 `textContent`로 표시합니다. 빈 결과에서 잘못된 지도 경계를 계산하지 않고, 좌표 0을 유효하게 처리하며, 범위를 벗어난 좌표는 제외합니다.
+Map popups display stored event and venue names through `textContent`. Empty results do not trigger invalid map bounds calculations; zero coordinates are treated as valid, and out-of-range coordinates are excluded.
 
-## 환경 설정
+## Environment Configuration
 
-`.env.example`은 항목 설명용 예시입니다. Spring Boot가 이 파일을 자동으로 읽지는 않으므로 셸 또는 실행 환경에서 변수를 설정해야 합니다.
+`.env.example` documents the available settings. Spring Boot does not load it automatically, so set variables in the shell or execution environment.
 
-| 환경 변수 | 용도 |
+| Environment variable | Purpose |
 | --- | --- |
-| `EVENTLITE_ADMIN_USERNAME`, `EVENTLITE_ADMIN_PASSWORD` | 일반 프로필의 관리자 인증 |
-| `EVENTLITE_DATASOURCE_URL` | 기본값 `jdbc:h2:file:./db/eventlite-dev` |
-| `EVENTLITE_DATASOURCE_USERNAME`, `EVENTLITE_DATASOURCE_PASSWORD` | 파일 DB 인증 |
-| `EVENTLITE_DDL_AUTO` | JPA 스키마 처리, 일반 프로필 기본값 `update` |
-| `EVENTLITE_MASTODON_INSTANCE` | Mastodon 인스턴스 HTTPS URL |
-| `EVENTLITE_MASTODON_TOKEN`, `EVENTLITE_MASTODON_ACCOUNT_ID` | 게시 권한과 공개 피드 대상 계정 |
-| `EVENTLITE_MAPBOX_TOKEN` | 서버 지오코딩 토큰 |
-| `EVENTLITE_MAPBOX_PUBLIC_TOKEN` | 브라우저용 공개 `pk.` 토큰 |
-| `EVENTLITE_PORT` 또는 `PORT` | 서버 포트, 기본값 `8080` |
+| `EVENTLITE_ADMIN_USERNAME`, `EVENTLITE_ADMIN_PASSWORD` | Administrator authentication for the normal profile |
+| `EVENTLITE_DATASOURCE_URL` | Defaults to `jdbc:h2:file:./db/eventlite-dev` |
+| `EVENTLITE_DATASOURCE_USERNAME`, `EVENTLITE_DATASOURCE_PASSWORD` | File database authentication |
+| `EVENTLITE_DDL_AUTO` | JPA schema handling; defaults to `update` in the normal profile |
+| `EVENTLITE_MASTODON_INSTANCE` | Mastodon instance HTTPS URL |
+| `EVENTLITE_MASTODON_TOKEN`, `EVENTLITE_MASTODON_ACCOUNT_ID` | Posting authorization and the account used for the public feed |
+| `EVENTLITE_MAPBOX_TOKEN` | Server geocoding token |
+| `EVENTLITE_MAPBOX_PUBLIC_TOKEN` | Public `pk.` token for the browser |
+| `EVENTLITE_PORT` or `PORT` | Server port; defaults to `8080` |
 
-일반 프로필에는 기본 관리자 계정이 없습니다. 관리자 이름과 비밀번호를 함께 설정하면 BCrypt로 인코딩해 인증에 사용합니다. 기존 파일 DB를 열 때는 해당 DB의 인증 정보를 별도로 지정해야 합니다.
+The normal profile has no default administrator account. Configuring both an administrator name and password creates an account with a BCrypt-encoded password for authentication. Opening an existing file database requires its own authentication settings.
 
-| 프로필 | 데이터와 계정 |
+| Profile | Data and accounts |
 | --- | --- |
-| 일반 | 환경 변수로 지정하는 파일 DB와 관리자 계정. 데모 데이터 생성 없음 |
-| `demo` | 별도 메모리 DB, 명시적으로 생성하는 데모 계정, 외부 연동 기본 비활성화 |
-| `test` | 테스트 전용 메모리 DB와 인증 정보, 외부 계정 호출 없음 |
+| Normal | File database and administrator account configured through environment variables; no demo data creation |
+| `demo` | Separate in-memory database, an explicitly created demo account, and external integrations disabled by default |
+| `test` | Dedicated in-memory test database and authentication settings; no calls to external accounts |
 
-`demo` 프로필은 `create-drop`을 사용하므로 데이터가 종료 후 남지 않습니다. 초기 데이터는 상대 날짜를 사용하며, 장소만 존재하는 경우에도 저장된 장소를 행사에 연결하고 이벤트가 이미 있으면 중복 생성하지 않습니다.
+The `demo` profile uses `create-drop`, so its data does not survive shutdown. Initial data uses relative dates. If venues already exist but events do not, initialization links events to stored venues; if events already exist, it does not create duplicates.
 
-현재 서버 지오코딩은 DB에 좌표를 저장하는 용도로 Mapbox v6의 `permanent=true`를 사용합니다. 실제 연동을 활성화할 때는 계정의 영구 지오코딩 설정을 확인해야 합니다. [Mapbox 공식 설명](https://docs.mapbox.com/api/search/geocoding/#storing-geocoding-results)
+Server geocoding currently uses Mapbox v6 with `permanent=true` because coordinates are stored in the database. Check the account's permanent geocoding settings before enabling the real integration. See the [official Mapbox explanation](https://docs.mapbox.com/api/search/geocoding/#storing-geocoding-results).
 
-## 검증 코드 찾기
+## Finding Verification Code
 
-| 확인할 조건 | 대표 테스트 |
+| Condition to check | Representative tests |
 | --- | --- |
-| 실제 HTTP 권한과 CSRF | `MutationSecurityTest`, `SecurityIntegrationTest`, `SecurityConfigurationTest` |
-| API 읽기 전용 정책 | `ReadOnlyApiIntegrationTest` 및 API 컨트롤러 테스트 |
-| HTML 폼과 CRUD 흐름 | `EventsControllerTest`, `VenuesControllerTest`, 해당 통합 테스트 |
-| 적은 장소 수·좌표·다음 3개 | `VenueServiceRegressionTest`, `EventServiceImplTest` |
-| 초기 데이터의 부분 DB와 재실행 | `InitialDataLoaderTest` |
-| 외부 HTTP·게시·지오코딩 실패 | `ExternalApiClientTest`, `MastodonServiceTest`, `GeocodingServiceTest` |
-| 지도 날짜·좌표·팝업·초기화 실패 | `src/test/javascript/event-maps.test.cjs` |
+| Actual HTTP authorization and CSRF | `MutationSecurityTest`, `SecurityIntegrationTest`, `SecurityConfigurationTest` |
+| Read-only API policy | `ReadOnlyApiIntegrationTest` and API controller tests |
+| HTML forms and CRUD flows | `EventsControllerTest`, `VenuesControllerTest`, and their integration tests |
+| Small venue datasets, coordinates, and the next three events | `VenueServiceRegressionTest`, `EventServiceImplTest` |
+| Partial database initialization and repeated execution | `InitialDataLoaderTest` |
+| External HTTP, posting, and geocoding failures | `ExternalApiClientTest`, `MastodonServiceTest`, `GeocodingServiceTest` |
+| Map dates, coordinates, popups, and initialization failures | `src/test/javascript/event-maps.test.cjs` |
 
-현재 검증 수치와 실행 한계는 [포트폴리오 문서](PORTFOLIO.md#유지보수-검증)에 기록했습니다. 응용 코드 변경 후에는 README의 두 검증 명령을 실행해 Java와 지도 로직을 함께 확인할 수 있습니다.
+Current verification figures and execution limits are recorded in the [portfolio document](PORTFOLIO.md#maintenance-verification). After application code changes, run both verification commands in the [README](../README.md) to check Java and map logic together.

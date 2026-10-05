@@ -19,7 +19,7 @@
 
 ![EventLite 로컬 데모 홈](docs/images/eventlite-home.png)
 
-[프로젝트 과정과 개인 기여](docs/PORTFOLIO.md) · [구조와 소스 코드 안내](docs/ARCHITECTURE.md) · [검증 기록](docs/verification.json)
+[프로젝트 과정과 개인 기여](docs/PORTFOLIO.ko.md) · [구조와 소스 코드 안내](docs/ARCHITECTURE.ko.md) · [검증 기록](docs/verification.json)
 
 ## 주요 기능
 
@@ -35,7 +35,7 @@
 
 Java 17 · Spring Boot · Spring MVC · Spring Security · Spring Data JPA · Thymeleaf · H2 · Bootstrap · JUnit 5 · Mockito · MockMvc · WebTestClient · JaCoCo
 
-MVC 화면과 읽기 전용 HAL API가 같은 서비스·JPA 저장소를 사용합니다. 생성·수정·삭제는 관리자 권한과 CSRF 검사를 적용한 HTML 관리 기능을 통해 수행합니다. 패키지별 역할과 설계 선택은 [구조 문서](docs/ARCHITECTURE.md)에 정리했습니다.
+MVC 화면과 읽기 전용 HAL API가 같은 서비스·JPA 저장소를 사용합니다. 생성·수정·삭제는 관리자 권한과 CSRF 검사를 적용한 HTML 관리 기능을 통해 수행합니다. 패키지별 역할과 설계 선택은 [구조 문서](docs/ARCHITECTURE.ko.md)에 정리했습니다.
 
 ## 실행
 
@@ -58,7 +58,7 @@ sh ./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
 
 일반 프로필에는 기본 관리자 계정이 없습니다. 관리 기능을 쓰려면 `EVENTLITE_ADMIN_USERNAME`, `EVENTLITE_ADMIN_PASSWORD`를 환경 변수로 지정하십시오. 비밀번호는 BCrypt로 인코딩해 인증에 사용합니다. 기존 파일 DB를 열려면 해당 DB의 사용자 이름과 비밀번호를 환경 변수로 지정해야 합니다.
 
-`.env.example`은 설정 예시이며 자동으로 읽히지 않습니다. DB·인증·외부 서비스 환경 변수와 Mapbox 설정은 [환경 설정 안내](docs/ARCHITECTURE.md#환경-설정)를 확인하십시오. 외부 서비스 계정이 없어도 로컬 데모의 기본 조회·관리 기능을 사용할 수 있습니다.
+`.env.example`은 설정 예시이며 자동으로 읽히지 않습니다. DB·인증·외부 서비스 환경 변수와 Mapbox 설정은 [환경 설정 안내](docs/ARCHITECTURE.ko.md#환경-설정)를 확인하십시오. 외부 서비스 계정이 없어도 로컬 데모의 기본 조회·관리 기능을 사용할 수 있습니다.
 
 ## 유지보수 버전 검증 — 2026-10-05
 
@@ -78,7 +78,7 @@ macOS / Linux에서는 `sh ./mvnw verify`를 사용합니다. 테스트는 `test
 | 브라우저 | 로그인·행사 생성 → 같은 ID 수정 → 삭제, JavaScript 오류 0개 |
 | 화면 | PC 1440px·모바일 390px, 가로 넘침 없음 |
 
-테스트는 별도 메모리 DB와 가짜 외부 응답을 사용했습니다. 실제 외부 계정의 API는 호출하지 않았습니다. Java 상세 결과는 `target/surefire-reports/`, 커버리지는 `target/site/jacoco/index.html`에 생성됩니다. 검증 범위와 한계는 [검증 및 회고](docs/PORTFOLIO.md#유지보수-검증)에, 기록은 [verification.json](docs/verification.json)에 있습니다.
+테스트는 별도 메모리 DB와 가짜 외부 응답을 사용했습니다. 실제 외부 계정의 API는 호출하지 않았습니다. Java 상세 결과는 `target/surefire-reports/`, 커버리지는 `target/site/jacoco/index.html`에 생성됩니다. 검증 범위와 한계는 [검증 및 회고](docs/PORTFOLIO.ko.md#유지보수-검증)에, 기록은 [verification.json](docs/verification.json)에 있습니다.
 
 GitHub Actions 설정이 포함되어 있습니다. 위 수치는 로컬 실행 기록이며 GitHub CI 실행 결과와는 구분합니다.
 
@@ -88,7 +88,7 @@ GitHub Actions 설정이 포함되어 있습니다. 위 수치는 로컬 실행 
 
 ## 팀 과제 이후 개선
 
-권한 검사 누락, 적은 장소 수, 날짜 경계, 지도 팝업의 HTML 삽입, 주소 변경 후 남는 좌표, 외부 게시 실패 표시를 수정하고 회귀 테스트를 추가했습니다. 변경 조건과 결과는 [프로젝트 회고](docs/PORTFOLIO.md#유지보수에서-개선한-조건)에 정리했습니다.
+권한 검사 누락, 적은 장소 수, 날짜 경계, 지도 팝업의 HTML 삽입, 주소 변경 후 남는 좌표, 외부 게시 실패 표시를 수정하고 회귀 테스트를 추가했습니다. 변경 조건과 결과는 [프로젝트 회고](docs/PORTFOLIO.ko.md#유지보수에서-개선한-조건)에 정리했습니다.
 
 ## 공개 범위와 남은 운영 작업
 
