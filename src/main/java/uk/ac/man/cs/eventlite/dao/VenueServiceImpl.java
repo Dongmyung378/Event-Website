@@ -1,21 +1,22 @@
 package uk.ac.man.cs.eventlite.dao;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import uk.ac.man.cs.eventlite.entities.Event;
 import uk.ac.man.cs.eventlite.entities.Venue;
 import uk.ac.man.cs.eventlite.services.Coordinates;
 import uk.ac.man.cs.eventlite.services.GeocodingService;
+import uk.ac.man.cs.eventlite.services.EventSchedule;
+import uk.ac.man.cs.eventlite.services.PageQuery;
 
 @Service
 public class VenueServiceImpl implements VenueService {
@@ -23,12 +24,24 @@ public class VenueServiceImpl implements VenueService {
     private VenueRepository venueRepository;
     @Autowired
     private GeocodingService geocodingService;
+    @Autowired
+    private EventRepository eventRepository;
+    @Autowired
+    private Clock clock = Clock.systemDefaultZone();
 
     @Override
     public long count() { return venueRepository.count(); }
 
     @Override
     public Iterable<Venue> findAll() { return venueRepository.findAllByOrderByNameAsc(); }
+
+    @Override
+    public Page<Venue> findPage(String query, int page, int size) {
+        PageRequest request = PageQuery.request(page, size);
+        String pattern = PageQuery.literalPattern(query);
+        return pattern == null ? venueRepository.findPage(request)
+            : venueRepository.findNamePage(pattern, request);
+    }
 
     @Override
     public Venue save(Venue venue) {
@@ -73,30 +86,16 @@ public class VenueServiceImpl implements VenueService {
 
     @Override
     public List<Venue> findTop3Venues() {
-        List<Venue> venues = new ArrayList<>();
-        findAll().forEach(venues::add);
-        return venues.stream()
-            .sorted(Comparator.comparingInt((Venue venue) -> venue.getEvents().size()).reversed()
-                .thenComparing(Venue::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
-            .limit(3)
-            .collect(Collectors.toList());
+        return venueRepository.findMostPopular(PageRequest.of(0, 3));
     }
 
     @Override
     public List<Event> findNext3Events(long venueId) {
-        return venueRepository.findById(venueId)
-            .map(venue -> upcomingEvents(venue.getEvents()))
-            .orElseGet(Collections::emptyList);
+        return eventRepository.findUpcomingAtVenue(venueId, LocalDate.now(clock), PageRequest.of(0, 3));
     }
 
     public static List<Event> upcomingEvents(List<Event> events) {
-        LocalDate today = LocalDate.now();
-        return events.stream()
-            .filter(event -> event.getDate() != null && !event.getDate().isBefore(today))
-            .sorted(Comparator.comparing(Event::getDate)
-                .thenComparing(Event::getTime, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(Event::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
-            .limit(3)
-            .collect(Collectors.toList());
+        // Retained for legacy callers; request paths use the bounded repository queries above.
+        return EventSchedule.upcomingEvents(events, LocalDate.now());
     }
 }

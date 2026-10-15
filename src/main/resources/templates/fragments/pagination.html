@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<nav th:fragment="pages(basePath, searchPath)" aria-label="List pagination" class="my-3">
+  <a th:if="${resultPage == null}" class="btn btn-outline-primary"
+     th:href="${query == null} ? @{${basePath}(page=0,size=20)} : @{${searchPath}(q=${query},page=0,size=20)}">View 20 per page</a>
+  <div th:if="${resultPage != null}" class="d-flex flex-wrap align-items-center gap-3">
+    <span th:text="|Page ${resultPage.number + 1} of ${resultPage.totalPages > 0 ? resultPage.totalPages : 1} (${resultPage.totalElements} results)|"></span>
+    <a th:if="${resultPage.hasPrevious()}" class="btn btn-outline-primary" rel="prev"
+       th:href="${query == null} ? @{${basePath}(page=${resultPage.number - 1},size=${resultPage.size})} : @{${searchPath}(q=${query},page=${resultPage.number - 1},size=${resultPage.size})}">Previous</a>
+    <a th:if="${resultPage.hasNext()}" class="btn btn-outline-primary" rel="next"
+       th:href="${query == null} ? @{${basePath}(page=${resultPage.number + 1},size=${resultPage.size})} : @{${searchPath}(q=${query},page=${resultPage.number + 1},size=${resultPage.size})}">Next</a>
+    <a class="btn btn-outline-secondary" th:href="${query == null} ? @{${basePath}} : @{${searchPath}(q=${query})}">View all results</a>
+  </div>
+</nav>
+</body>
+</html>

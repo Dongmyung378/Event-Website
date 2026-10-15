@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.data.domain.Pageable;
 
 import uk.ac.man.cs.eventlite.entities.Event;
 import uk.ac.man.cs.eventlite.entities.Venue;
@@ -24,15 +25,18 @@ import uk.ac.man.cs.eventlite.services.GeocodingService;
 class VenueServiceRegressionTest {
     private VenueRepository repository;
     private GeocodingService geocoder;
+    private EventRepository eventRepository;
     private VenueServiceImpl service;
 
     @BeforeEach
     void setUp() {
         repository = mock(VenueRepository.class);
         geocoder = mock(GeocodingService.class);
+        eventRepository = mock(EventRepository.class);
         service = new VenueServiceImpl();
         ReflectionTestUtils.setField(service, "venueRepository", repository);
         ReflectionTestUtils.setField(service, "geocodingService", geocoder);
+        ReflectionTestUtils.setField(service, "eventRepository", eventRepository);
     }
 
     @ParameterizedTest
@@ -44,10 +48,16 @@ class VenueServiceRegressionTest {
             for (int j = 0; j < i; j++) venue.getEvents().add(new Event());
             venues.add(venue);
         }
-        when(repository.findAllByOrderByNameAsc()).thenReturn(venues);
+        List<Venue> ranked = new ArrayList<>(venues);
+        java.util.Collections.reverse(ranked);
+        when(repository.findMostPopular(any(Pageable.class)))
+            .thenReturn(ranked.subList(0, Math.min(3, count)));
         List<Venue> result = service.findTop3Venues();
         assertEquals(Math.min(3, count), result.size());
         if (count > 0) assertSame(venues.get(count - 1), result.get(0));
+        verify(repository).findMostPopular(argThat(page -> page.getPageNumber() == 0
+            && page.getPageSize() == 3));
+        verify(repository, never()).findAllByOrderByNameAsc();
     }
 
     @Test
@@ -88,8 +98,10 @@ class VenueServiceRegressionTest {
         Event late = event(today.plusDays(1), LocalTime.of(18, 0));
         venue.getEvents().addAll(Arrays.asList(event(today.minusDays(1), LocalTime.NOON),
             event(today.plusDays(2), null), late, early, todayEvent));
-        when(repository.findById(1L)).thenReturn(Optional.of(venue));
+        when(eventRepository.findUpcomingAtVenue(eq(1L), eq(today), any(Pageable.class)))
+            .thenReturn(Arrays.asList(todayEvent, early, late));
         assertEquals(Arrays.asList(todayEvent, early, late), service.findNext3Events(1L));
+        verify(repository, never()).findById(1L);
     }
 
     private Venue venue(String name, String road, String postcode) {

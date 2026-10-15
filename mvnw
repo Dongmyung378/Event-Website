@@ -172,10 +172,16 @@ verbose "Couldn't find MAVEN_HOME, downloading and installing it ..."
 verbose "Downloading from: $distributionUrl"
 verbose "Downloading to: $TMP_DOWNLOAD_DIR/$distributionUrlName"
 
-# select .zip or .tar.gz
+# Keep the checksum-pinned ZIP even when unzip is absent (upstream issue #425).
+MVNW_JAR=''
 if ! command -v unzip >/dev/null; then
-  distributionUrl="${distributionUrl%.zip}.tar.gz"
-  distributionUrlName="${distributionUrl##*/}"
+  if [ -n "${JAVA_HOME-}" ] && [ -x "$JAVA_HOME/bin/jar" ]; then
+    MVNW_JAR="$JAVA_HOME/bin/jar"
+  elif command -v jar >/dev/null; then
+    MVNW_JAR=$(command -v jar)
+  else
+    die "Install a JDK (including jar) or unzip to unpack the checksum-pinned Maven ZIP."
+  fi
 fi
 
 # verbose opt
@@ -250,7 +256,9 @@ fi
 if command -v unzip >/dev/null; then
   unzip ${__MVNW_QUIET_UNZIP:+"$__MVNW_QUIET_UNZIP"} "$TMP_DOWNLOAD_DIR/$distributionUrlName" -d "$TMP_DOWNLOAD_DIR" || die "failed to unzip"
 else
-  tar xzf${__MVNW_QUIET_TAR:+"$__MVNW_QUIET_TAR"} "$TMP_DOWNLOAD_DIR/$distributionUrlName" -C "$TMP_DOWNLOAD_DIR" || die "failed to untar"
+  (cd "$TMP_DOWNLOAD_DIR" && "$MVNW_JAR" xf "$distributionUrlName") || die "failed to unpack Maven ZIP with jar"
+  # The JDK jar tool does not restore Unix execute bits from ZIP entries.
+  chmod +x "$TMP_DOWNLOAD_DIR/$distributionUrlNameMain/bin/$MVN_CMD" || die "failed to make Maven executable"
 fi
 printf %s\\n "$distributionUrl" >"$TMP_DOWNLOAD_DIR/$distributionUrlNameMain/mvnw.url"
 mv -- "$TMP_DOWNLOAD_DIR/$distributionUrlNameMain" "$MAVEN_HOME" || [ -d "$MAVEN_HOME" ] || die "fail to move MAVEN_HOME"

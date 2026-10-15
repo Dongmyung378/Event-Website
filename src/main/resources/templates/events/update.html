@@ -6,6 +6,7 @@
   <h1>Update Event</h1>
   <p class="form-text">Fields marked with * are required.</p>
   <form th:action="@{/events/updateSave/{id}(id=${event.id})}" th:object="${event}" method="post">
+    <input type="hidden" th:field="*{version}">
     <div class="alert alert-danger" role="alert" th:if="${#fields.hasAnyErrors()}">Please correct the highlighted fields.</div>
     <div class="mb-3">
       <label class="form-label" for="name">Event Name <span class="text-danger">*</span></label>

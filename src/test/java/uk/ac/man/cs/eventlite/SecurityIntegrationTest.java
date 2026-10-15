@@ -322,13 +322,12 @@ public class SecurityIntegrationTest {
                 .returnResult();
         cookie = result.getResponseCookies().getFirst(SESSION_KEY).getValue();
 
-        // Get Event Beta to modify (lookup directly from service)
+        // Get Event Beta to modify, then load the actual versioned edit form.
         List<Event> betaList = eventService.findByNameContainingIgnoreCase("Event Beta");
         assertFalse(betaList.isEmpty(), "Event Beta should exist");
         Event eventBetaToUpdate = betaList.get(0);
 
-        // Visit /events to get a CSRF token.
-        result = client.get().uri("/events")
+        result = client.get().uri("/events/update/" + eventBetaToUpdate.getId())
                 .accept(MediaType.TEXT_HTML)
                 .cookie(SESSION_KEY, cookie)
                 .exchange()
@@ -336,6 +335,10 @@ public class SecurityIntegrationTest {
                 .expectBody(String.class)
                 .returnResult();
         csrfToken = getCsrfToken(result.getResponseBody());
+
+        java.util.regex.Matcher editVersion = java.util.regex.Pattern.compile(
+            "name=\"version\"[^>]*value=\"([0-9]+)\"").matcher(result.getResponseBody());
+        assertTrue(editVersion.find(), "The edit form must contain its original record version");
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         String updatedName = "Updated Event Beta";
@@ -347,6 +350,7 @@ public class SecurityIntegrationTest {
         form.add("time", updatedTime);
         form.add("venue.id", String.valueOf(eventBetaToUpdate.getVenue().getId()));
         form.add("description", updatedDescription);
+        form.add("version", editVersion.group(1));
         form.add("_csrf", csrfToken);
 
         client.post().uri("/events/updateSave/" + eventBetaToUpdate.getId())

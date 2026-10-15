@@ -20,6 +20,7 @@
     </div>
   </form>
   <p th:if="${query != null}">Search results for “<span th:text="${query}"></span>”</p>
+  <nav th:replace="~{fragments/pagination :: pages('/events', '/events/search')}"></nav>
   <p th:if="${#lists.isEmpty(events)}" class="text-muted">No events found.</p>
   <h2 class="mt-4 text-success">Upcoming Events</h2>
   <div class="table-responsive">

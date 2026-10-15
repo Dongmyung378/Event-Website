@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layouts/default}">
+<head><title>Record changed</title></head>
+<body>
+<div layout:fragment="content">
+  <h1>Record changed</h1>
+  <p class="alert alert-warning" role="alert" th:text="${conflictMessage}"></p>
+  <p>Your changes have not been saved. Open the record again to review its latest values.</p>
+  <a th:if="${reloadPath != null}" class="btn btn-primary" th:href="@{${reloadPath}}">Reload latest form</a>
+  <a class="btn btn-primary" th:href="@{/events}">Event List</a>
+  <a class="btn btn-outline-primary" th:href="@{/venues}">Venue List</a>
+</div>
+</body>
+</html>

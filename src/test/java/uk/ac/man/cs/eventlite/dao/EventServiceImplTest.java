@@ -16,6 +16,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.data.domain.Pageable;
 
 import uk.ac.man.cs.eventlite.entities.Event;
 import uk.ac.man.cs.eventlite.entities.Venue;
@@ -127,14 +128,17 @@ public class EventServiceImplTest {
         future4.setName("Future Event D");
         future4.setDate(now.plusDays(4));
 
-        List<Event> events = Arrays.asList(pastEvent, future1, future2, future3, future4);
-        when(eventRepository.findAllByOrderByDateAscNameAsc()).thenReturn(events);
+        when(eventRepository.findUpcoming(eq(now), any(Pageable.class)))
+            .thenReturn(Arrays.asList(future1, future2, future3));
 
         List<Event> top3 = eventService.findTop3Events();
         assertEquals(3, top3.size(), "Three future events should be returned");
         assertEquals("Future Event A", top3.get(0).getName());
         assertEquals("Future Event B", top3.get(1).getName());
         assertEquals("Future Event C", top3.get(2).getName());
+        verify(eventRepository).findUpcoming(eq(now), argThat(page -> page.getPageNumber() == 0
+            && page.getPageSize() == 3));
+        verify(eventRepository, never()).findAllByOrderByDateAscNameAsc();
     }
 
 
@@ -150,8 +154,7 @@ public class EventServiceImplTest {
         future1.setName("Future Event A");
         future1.setDate(now.plusDays(1));
 
-        List<Event> events = Arrays.asList(pastEvent, future1);
-        when(eventRepository.findAllByOrderByDateAscNameAsc()).thenReturn(events);
+        when(eventRepository.findUpcoming(eq(now), any(Pageable.class))).thenReturn(Arrays.asList(future1));
 
         List<Event> topEvents = eventService.findTop3Events();
         assertEquals(1, topEvents.size(), "1 future event should be returned");
@@ -169,7 +172,7 @@ public class EventServiceImplTest {
         early.setName("Z Early");
         early.setDate(today);
         early.setTime(LocalTime.of(9, 0));
-        when(eventRepository.findAllByOrderByDateAscNameAsc()).thenReturn(Arrays.asList(late, early));
+        when(eventRepository.findUpcoming(eq(today), any(Pageable.class))).thenReturn(Arrays.asList(early, late));
         assertEquals(Arrays.asList(early, late), eventService.findTop3Events());
     }
 

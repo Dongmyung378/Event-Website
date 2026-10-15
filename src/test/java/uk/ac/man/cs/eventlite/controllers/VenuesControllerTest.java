@@ -33,14 +33,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.security.test.context.support.WithMockUser;
 
 import uk.ac.man.cs.eventlite.config.Security;
+import uk.ac.man.cs.eventlite.services.MutationService;
+import uk.ac.man.cs.eventlite.exceptions.EventNotFoundException;
+import uk.ac.man.cs.eventlite.exceptions.VenueNotFoundException;
 import uk.ac.man.cs.eventlite.dao.VenueService;
 import uk.ac.man.cs.eventlite.dao.EventService;
 import uk.ac.man.cs.eventlite.entities.Venue;
@@ -55,11 +58,14 @@ public class VenuesControllerTest {
     @Autowired
     private org.springframework.test.web.servlet.MockMvc mvc;
 
-    @MockBean
+    @MockitoBean
     private VenueService venueService;
 
-    @MockBean
+    @MockitoBean
     private EventService eventService;
+
+    @MockitoBean
+    private MutationService mutationService;
 
     @Test
     void testLatitudeAndLongitude() {
@@ -144,7 +150,7 @@ public class VenuesControllerTest {
             .andExpect(redirectedUrl("/venues"))
             .andExpect(flash().attribute("ok_message", "New venue added."));
 
-        verify(venueService).save(any(Venue.class));
+        verify(mutationService).createVenue(any(Venue.class));
     }
 
     @Test
@@ -160,7 +166,7 @@ public class VenuesControllerTest {
             .andExpect(view().name("venues/new"))
             .andExpect(model().attributeHasFieldErrors("venue", "name"));
 
-        verify(venueService, never()).save(any(Venue.class));
+        verify(mutationService, never()).createVenue(any(Venue.class));
     }
 
     @Test
@@ -178,7 +184,7 @@ public class VenuesControllerTest {
             .andExpect(view().name("venues/new"))
             .andExpect(model().attributeHasFieldErrors("venue", "name"));
 
-        verify(venueService, never()).save(any(Venue.class));
+        verify(mutationService, never()).createVenue(any(Venue.class));
     }
 
     @Test
@@ -194,7 +200,7 @@ public class VenuesControllerTest {
             .andExpect(view().name("venues/new"))
             .andExpect(model().attributeHasFieldErrors("venue", "road"));
 
-        verify(venueService, never()).save(any(Venue.class));
+        verify(mutationService, never()).createVenue(any(Venue.class));
     }
 
     @Test
@@ -212,7 +218,7 @@ public class VenuesControllerTest {
             .andExpect(view().name("venues/new"))
             .andExpect(model().attributeHasFieldErrors("venue", "road"));
 
-        verify(venueService, never()).save(any(Venue.class));
+        verify(mutationService, never()).createVenue(any(Venue.class));
     }
 
     @Test
@@ -228,7 +234,7 @@ public class VenuesControllerTest {
             .andExpect(view().name("venues/new"))
             .andExpect(model().attributeHasFieldErrors("venue", "postcode"));
 
-        verify(venueService, never()).save(any(Venue.class));
+        verify(mutationService, never()).createVenue(any(Venue.class));
     }
 
     @Test
@@ -244,7 +250,7 @@ public class VenuesControllerTest {
             .andExpect(view().name("venues/new"))
             .andExpect(model().attributeHasFieldErrors("venue", "capacity"));
 
-        verify(venueService, never()).save(any(Venue.class));
+        verify(mutationService, never()).createVenue(any(Venue.class));
     }
 
     @Test
@@ -257,7 +263,7 @@ public class VenuesControllerTest {
 
         when(venueService.findById(1L)).thenReturn(Optional.of(existingVenue));
 
-        mvc.perform(post("/venues/updateSave/1")
+        mvc.perform(post("/venues/updateSave/1").param("version", "0")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("name", "Updated Venue")
@@ -268,7 +274,7 @@ public class VenuesControllerTest {
             .andExpect(redirectedUrl("/venues"))
             .andExpect(flash().attribute("ok_message", "Venue updated successfully."));
 
-        verify(venueService).save(existingVenue);
+        verify(mutationService).updateVenue(eq(1L), any(Venue.class));
     }
 
     @Test
@@ -281,7 +287,7 @@ public class VenuesControllerTest {
 
         when(venueService.findById(1L)).thenReturn(Optional.of(existingVenue));
 
-        mvc.perform(post("/venues/updateSave/1")
+        mvc.perform(post("/venues/updateSave/1").param("version", "0")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("name", "")
@@ -292,7 +298,7 @@ public class VenuesControllerTest {
             .andExpect(view().name("venues/update"))
             .andExpect(model().attributeHasFieldErrors("venue", "name"));
 
-        verify(venueService, never()).save(any(Venue.class));
+        verify(mutationService, never()).updateVenue(anyLong(), any(Venue.class));
     }
 
     @Test
@@ -306,7 +312,7 @@ public class VenuesControllerTest {
         String longName = "A".repeat(257);
         when(venueService.findById(1L)).thenReturn(Optional.of(existingVenue));
 
-        mvc.perform(post("/venues/updateSave/1")
+        mvc.perform(post("/venues/updateSave/1").param("version", "0")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("name", longName)
@@ -317,7 +323,7 @@ public class VenuesControllerTest {
             .andExpect(view().name("venues/update"))
             .andExpect(model().attributeHasFieldErrors("venue", "name"));
 
-        verify(venueService, never()).save(any(Venue.class));
+        verify(mutationService, never()).updateVenue(anyLong(), any(Venue.class));
     }
 
     @Test
@@ -330,7 +336,7 @@ public class VenuesControllerTest {
 
         when(venueService.findById(1L)).thenReturn(Optional.of(existingVenue));
 
-        mvc.perform(post("/venues/updateSave/1")
+        mvc.perform(post("/venues/updateSave/1").param("version", "0")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("name", "New Name")
@@ -341,7 +347,7 @@ public class VenuesControllerTest {
             .andExpect(view().name("venues/update"))
             .andExpect(model().attributeHasFieldErrors("venue", "road"));
 
-        verify(venueService, never()).save(any(Venue.class));
+        verify(mutationService, never()).updateVenue(anyLong(), any(Venue.class));
     }
 
     @Test
@@ -355,7 +361,7 @@ public class VenuesControllerTest {
         String longRoad = "A".repeat(301);
         when(venueService.findById(1L)).thenReturn(Optional.of(existingVenue));
 
-        mvc.perform(post("/venues/updateSave/1")
+        mvc.perform(post("/venues/updateSave/1").param("version", "0")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("name", "New Name")
@@ -366,7 +372,7 @@ public class VenuesControllerTest {
             .andExpect(view().name("venues/update"))
             .andExpect(model().attributeHasFieldErrors("venue", "road"));
 
-        verify(venueService, never()).save(any(Venue.class));
+        verify(mutationService, never()).updateVenue(anyLong(), any(Venue.class));
     }
 
     @Test
@@ -379,7 +385,7 @@ public class VenuesControllerTest {
 
         when(venueService.findById(1L)).thenReturn(Optional.of(existingVenue));
 
-        mvc.perform(post("/venues/updateSave/1")
+        mvc.perform(post("/venues/updateSave/1").param("version", "0")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("name", "New Name")
@@ -390,7 +396,7 @@ public class VenuesControllerTest {
             .andExpect(view().name("venues/update"))
             .andExpect(model().attributeHasFieldErrors("venue", "capacity"));
 
-        verify(venueService, never()).save(any(Venue.class));
+        verify(mutationService, never()).updateVenue(anyLong(), any(Venue.class));
     }
 
     @Test
@@ -403,7 +409,7 @@ public class VenuesControllerTest {
 
         when(venueService.findById(1L)).thenReturn(Optional.of(existingVenue));
 
-        mvc.perform(post("/venues/updateSave/1")
+        mvc.perform(post("/venues/updateSave/1").param("version", "0")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("name", "New Name")
@@ -414,7 +420,7 @@ public class VenuesControllerTest {
             .andExpect(view().name("venues/update"))
             .andExpect(model().attributeHasFieldErrors("venue", "capacity"));
 
-        verify(venueService, never()).save(any(Venue.class));
+        verify(mutationService, never()).updateVenue(anyLong(), any(Venue.class));
     }
 
 
@@ -428,7 +434,7 @@ public class VenuesControllerTest {
 
         when(venueService.findById(1L)).thenReturn(Optional.of(existingVenue));
 
-        mvc.perform(post("/venues/updateSave/1")
+        mvc.perform(post("/venues/updateSave/1").param("version", "0")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("name", "New Name")
@@ -439,7 +445,7 @@ public class VenuesControllerTest {
             .andExpect(view().name("venues/update"))
             .andExpect(model().attributeHasFieldErrors("venue", "postcode"));
 
-        verify(venueService, never()).save(any(Venue.class));
+        verify(mutationService, never()).updateVenue(anyLong(), any(Venue.class));
     }
 
     @Test
@@ -473,12 +479,13 @@ public class VenuesControllerTest {
         when(venueService.existsById(2L)).thenReturn(true);
         when(venueService.findById(2L)).thenReturn(Optional.of(venue));
 
+        when(mutationService.deleteVenue(2L)).thenReturn(true);
         mvc.perform(delete("/venues/2").with(csrf()))
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrl("/venues"))
             .andExpect(flash().attribute("ok_message", "Venue deleted."));
 
-        verify(venueService).deleteById(2L);
+        verify(mutationService).deleteVenue(2L);
     }
 
  // Additional tests to add in VenuesControllerTest.java
@@ -533,7 +540,7 @@ public class VenuesControllerTest {
 
         when(venueService.findById(1L)).thenReturn(Optional.of(existingVenue));
 
-        mvc.perform(post("/venues/updateSave/1")
+        mvc.perform(post("/venues/updateSave/1").param("version", "0")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("name", "Updated Venue")
@@ -544,7 +551,7 @@ public class VenuesControllerTest {
             .andExpect(redirectedUrl("/venues"))
             .andExpect(flash().attribute("ok_message", "Venue updated successfully."));
 
-        verify(venueService).save(existingVenue);
+        verify(mutationService).updateVenue(eq(1L), any(Venue.class));
     }
 
     // Test for updateSave failure (invalid data triggering validation errors)
@@ -558,7 +565,7 @@ public class VenuesControllerTest {
 
         when(venueService.findById(1L)).thenReturn(Optional.of(existingVenue));
 
-        mvc.perform(post("/venues/updateSave/1")
+        mvc.perform(post("/venues/updateSave/1").param("version", "0")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 // Provide invalid data: blank name to trigger a validation error
@@ -571,7 +578,7 @@ public class VenuesControllerTest {
             .andExpect(model().attributeHasFieldErrors("venue", "name"));
 
         // Verify that the service is not called to save an invalid venue.
-        verify(venueService, never()).save(existingVenue);
+        verify(mutationService, never()).updateVenue(eq(1L), any(Venue.class));
     }
 
     @Test
@@ -579,6 +586,7 @@ public class VenuesControllerTest {
         // Simulate that no venue exists with id 99
         when(venueService.existsById(99L)).thenReturn(false);
 
+        doThrow(new VenueNotFoundException(99L)).when(mutationService).deleteVenue(99L);
         mvc.perform(delete("/venues/99").with(csrf()))
            .andExpect(status().isNotFound())
            .andExpect(view().name("venues/not_found"));
@@ -667,7 +675,7 @@ public class VenuesControllerTest {
                 .collect(Collectors.toList());
 
         when(venueService.findById(1L)).thenReturn(Optional.of(venue));
-        when(eventService.getEventsByVenueId(1L)).thenReturn(filtered);
+        when(venueService.findNext3Events(1L)).thenReturn(filtered);
 
         mvc.perform(get("/venues/1/next3events"))
             .andExpect(status().isOk())
@@ -677,7 +685,7 @@ public class VenuesControllerTest {
             .andExpect(model().attribute("events", filtered));
 
         verify(venueService, times(1)).findById(1L);
-        verify(eventService, times(1)).getEventsByVenueId(1L);
+        verify(venueService).findNext3Events(1L);
     }
 
     @Test
@@ -710,7 +718,8 @@ public class VenuesControllerTest {
     public void testUpdateSaveVenueNotFound() throws Exception {
         when(venueService.findById(99L)).thenReturn(Optional.empty());
 
-        mvc.perform(post("/venues/updateSave/99")
+        when(mutationService.updateVenue(eq(99L), any(Venue.class))).thenThrow(new VenueNotFoundException(99L));
+        mvc.perform(post("/venues/updateSave/99").param("version", "0")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("name", "Updated Venue")
@@ -730,7 +739,7 @@ public class VenuesControllerTest {
     }
 
     @Test
-    public void changedAddressClearsCoordinatesBeforeSaving() throws Exception {
+    public void updateUsesUrlIdAndRejectsCoordinateMassAssignment() throws Exception {
         Venue existing = new Venue();
         existing.setId(1L);
         existing.setName("Venue");
@@ -739,13 +748,50 @@ public class VenuesControllerTest {
         existing.setLatitude(53.48);
         existing.setLongitude(-2.24);
         when(venueService.findById(1L)).thenReturn(Optional.of(existing));
-        mvc.perform(post("/venues/updateSave/1").with(csrf())
+        mvc.perform(post("/venues/updateSave/1").param("version", "0").with(csrf())
                 .param("id", "99").param("name", "Venue").param("capacity", "100")
-                .param("road", "New Road").param("postcode", "NEW"))
+                .param("road", "New Road").param("postcode", "NEW").param("latitude", "99").param("longitude", "99"))
             .andExpect(status().is3xxRedirection());
-        verify(venueService).save(existing);
-        org.junit.jupiter.api.Assertions.assertEquals(1L, existing.getId());
-        org.junit.jupiter.api.Assertions.assertNull(existing.getLatitude());
-        org.junit.jupiter.api.Assertions.assertNull(existing.getLongitude());
+        ArgumentCaptor<Venue> submitted = ArgumentCaptor.forClass(Venue.class);
+        verify(mutationService).updateVenue(eq(1L), submitted.capture());
+        org.junit.jupiter.api.Assertions.assertEquals(1L, submitted.getValue().getId());
+        org.junit.jupiter.api.Assertions.assertNull(submitted.getValue().getLatitude());
+        org.junit.jupiter.api.Assertions.assertNull(submitted.getValue().getLongitude());
+    }
+    @Test
+    public void staleVenueUpdateReturnsConflict() throws Exception {
+        when(mutationService.updateVenue(eq(1L), any(Venue.class)))
+            .thenThrow(new uk.ac.man.cs.eventlite.exceptions.MutationConflictException("This record has changed. Reload the latest version."));
+        mvc.perform(post("/venues/updateSave/1").with(csrf())
+                .param("version", "4").param("name", "Stale venue").param("capacity", "100")
+                .param("road", "Test Road").param("postcode", "M1 1AA"))
+            .andExpect(status().isConflict())
+            .andExpect(view().name("mutation-conflict"))
+            .andExpect(model().attribute("reloadPath", "/venues/update/1"));
+        ArgumentCaptor<Venue> form = ArgumentCaptor.forClass(Venue.class);
+        verify(mutationService).updateVenue(eq(1L), form.capture());
+        assertEquals(4L, form.getValue().getVersion());
+        verify(mutationService, never()).createVenue(any());
+    }
+
+    @Test
+    public void optionalVenuePaginationKeepsSearchQuery() throws Exception {
+        when(venueService.findPage("hall", 1, 2)).thenReturn(new org.springframework.data.domain.PageImpl<>(
+            Collections.emptyList(), org.springframework.data.domain.PageRequest.of(1, 2), 7));
+        mvc.perform(get("/venues/search").param("q", " hall ").param("page", "1").param("size", "2"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("query", "hall"))
+            .andExpect(model().attributeExists("resultPage"))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(containsString("page=2")))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(containsString("q=hall")));
+        verify(venueService).findPage("hall", 1, 2);
+        verify(venueService, never()).findAll();
+    }
+
+    @Test
+    public void invalidVenuePageSizeIsABadRequest() throws Exception {
+        when(venueService.findPage(null, 0, 101)).thenThrow(new IllegalArgumentException("Invalid page size"));
+        mvc.perform(get("/venues").param("size", "101"))
+            .andExpect(status().isBadRequest());
     }
 }

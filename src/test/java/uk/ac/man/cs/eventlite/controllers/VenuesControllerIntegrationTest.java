@@ -44,6 +44,12 @@ public class VenuesControllerIntegrationTest extends AbstractTransactionalJUnit4
         jsessionId = loginAndGetSessionId();
     }
 
+    private String extractVersion(String html) {
+        Matcher matcher = Pattern.compile("name=\"version\"[^>]*value=\"([0-9]+)\"").matcher(html);
+        if (!matcher.find()) throw new IllegalStateException("Missing edit version");
+        return matcher.group(1);
+    }
+
     private String extractCsrfToken(String html) {
         Pattern pattern = Pattern.compile("name=\"_csrf\"\\s+value=\"([^\"]+)\"");
         Matcher matcher = pattern.matcher(html);
@@ -229,7 +235,7 @@ public class VenuesControllerIntegrationTest extends AbstractTransactionalJUnit4
     @Test
     public void testUpdateSaveWithvalidId() {
          String newVenuePage = client.get()
-                .uri("/venues/new")
+                .uri("/venues/update/1")
                 .header(HttpHeaders.COOKIE, jsessionId)
                 .accept(MediaType.TEXT_HTML)
                 .exchange()
@@ -240,6 +246,7 @@ public class VenuesControllerIntegrationTest extends AbstractTransactionalJUnit4
         String newCsrfToken = extractCsrfToken(newVenuePage);
 
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("version", extractVersion(newVenuePage));
         formData.add("name", "New Venue");
         formData.add("capacity", "500");
         formData.add("road", "Test Road");
@@ -294,6 +301,7 @@ public class VenuesControllerIntegrationTest extends AbstractTransactionalJUnit4
         String newCsrfToken = extractCsrfToken(newVenuePage);
 
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("version", extractVersion(newVenuePage));
              formData.add("name", "Updated Venue");
              formData.add("capacity", "150");
 	        formData.add("road", "Updated Road");

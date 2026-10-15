@@ -24,8 +24,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -51,16 +51,16 @@ public class VenuesControllerApiTest {
     @Autowired
     private MockMvc mvc;
 
-    @MockBean
+    @MockitoBean
     private VenueService venueService;
 
-    @MockBean
+    @MockitoBean
     private EventService eventService;
 
     @Autowired
     private VenueModelAssembler venueAssembler;
 
-    @MockBean
+    @MockitoBean
     private EventModelAssembler eventAssembler;
 
     @Test
@@ -220,7 +220,7 @@ public class VenuesControllerApiTest {
         List<Event> events = Arrays.asList(event1, event2, event3);
 
         when(venueService.findById(1L)).thenReturn(Optional.of(venue));
-        when(eventService.getEventsByVenueId(1L)).thenReturn(events);
+        when(venueService.findNext3Events(1L)).thenReturn(events);
 
         when(eventAssembler.toModel(event1)).thenReturn(EntityModel.of(event1));
         when(eventAssembler.toModel(event2)).thenReturn(EntityModel.of(event2));
@@ -231,7 +231,7 @@ public class VenuesControllerApiTest {
 	        .andExpect(status().isOk());
 
         verify(venueService).findById(1L);
-        verify(eventService).getEventsByVenueId(1L);
+        verify(venueService).findNext3Events(1L);
     }
 
 	@Test
@@ -245,5 +245,53 @@ public class VenuesControllerApiTest {
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
         verify(venueService).findById(7L);
+    }
+    @Test
+    void sizeOnlyPaginationDefaultsToFirstPage() throws Exception {
+        Venue venue = new Venue();
+        venue.setId(12L);
+        venue.setName("Paged venue");
+        when(venueService.findPage(null, 0, 1)).thenReturn(new org.springframework.data.domain.PageImpl<>(
+            java.util.List.of(venue), org.springframework.data.domain.PageRequest.of(0, 1), 3));
+        mvc.perform(get("/api/venues").accept(MediaType.APPLICATION_JSON).param("size", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page.number").value(0))
+            .andExpect(jsonPath("$.page.totalElements").value(3))
+            .andExpect(jsonPath("$._embedded.venues[0].id").value(12))
+            .andExpect(jsonPath("$._links.prev").doesNotExist())
+            .andExpect(jsonPath("$._links.next.href", containsString("page=1")));
+    }
+
+    @Test
+    void invalidPageIsABadRequest() throws Exception {
+        when(venueService.findPage(null, 0, 101)).thenThrow(new IllegalArgumentException("Invalid size"));
+        mvc.perform(get("/api/venues").accept(MediaType.APPLICATION_JSON).param("size", "101"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    void paginationLinksKeepEncodedSearchTermsWhenFollowed() throws Exception {
+        Venue venue = new Venue();
+        venue.setId(1L);
+        venue.setName("Matched venue");
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        for (String query : java.util.List.of("%", "two words", "한글 장소", "a+b", "100%_! & map")) {
+            for (int page = 0; page < 2; page++) {
+                when(venueService.findPage(query, page, 1)).thenReturn(new org.springframework.data.domain.PageImpl<>(
+                    java.util.List.of(venue), org.springframework.data.domain.PageRequest.of(page, 1), 3));
+            }
+            String encoded = java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
+            String first = mvc.perform(get(java.net.URI.create("/api/venues?page=0&size=1&q=" + encoded)).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            String next = json.readTree(first).at("/_links/next/href").asText();
+            String second = mvc.perform(get(java.net.URI.create(next)).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.number").value(1))
+                .andReturn().getResponse().getContentAsString();
+            String previous = json.readTree(second).at("/_links/prev/href").asText();
+            mvc.perform(get(java.net.URI.create(previous)).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.number").value(0));
+            verify(venueService, times(2)).findPage(query, 0, 1);
+            verify(venueService).findPage(query, 1, 1);
+        }
     }
 }

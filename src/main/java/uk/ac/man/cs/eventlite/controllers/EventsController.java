@@ -1,8 +1,7 @@
 package uk.ac.man.cs.eventlite.controllers;
 
-import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -19,13 +18,14 @@ import uk.ac.man.cs.eventlite.dao.VenueService;
 import uk.ac.man.cs.eventlite.entities.Event;
 import uk.ac.man.cs.eventlite.entities.Venue;
 import uk.ac.man.cs.eventlite.exceptions.EventNotFoundException;
+import uk.ac.man.cs.eventlite.services.MutationService;
 
 @Controller
 @RequestMapping(value = "/events", produces = MediaType.TEXT_HTML_VALUE)
 public class EventsController {
     @InitBinder("event")
     public void configureEventBinding(WebDataBinder binder) {
-        binder.setAllowedFields("id", "name", "date", "time", "description", "venue", "venue.id");
+        binder.setAllowedFields("id", "version", "name", "date", "time", "description", "venue", "venue.id");
     }
     @Autowired
     private EventService eventService;
@@ -33,6 +33,8 @@ public class EventsController {
     private VenueService venueService;
     @Autowired
     private MastodonService mastodonService;
+    @Autowired
+    private MutationService mutationService;
 
     @ExceptionHandler(EventNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
@@ -51,8 +53,10 @@ public class EventsController {
     }
 
     @GetMapping
-    public String getAllEvents(Model model) {
-        populateList(model, eventService.findAll());
+    public String getAllEvents(@RequestParam(required = false) Integer page,
+                               @RequestParam(required = false) Integer size, Model model) {
+        if (page == null && size == null) populateList(model, eventService.findAll());
+        else populatePage(model, null, page, size);
         return "events/index";
     }
 
@@ -63,11 +67,27 @@ public class EventsController {
     }
 
     @GetMapping("/search")
-    public String searchEvents(@RequestParam("q") String query, Model model) {
+    public String searchEvents(@RequestParam("q") String query,
+                               @RequestParam(required = false) Integer page,
+                               @RequestParam(required = false) Integer size, Model model) {
         String normalized = query.trim();
-        populateList(model, eventService.findByNameContainingIgnoreCase(normalized));
+        if (page == null && size == null) populateList(model, eventService.findByNameContainingIgnoreCase(normalized));
+        else populatePage(model, normalized, page, size);
         model.addAttribute("query", normalized);
         return "events/index";
+    }
+
+    private void populatePage(Model model, String query, Integer page, Integer size) {
+        Page<Event> result = eventService.findPage(query, page == null ? 0 : page, size == null ? 20 : size);
+        populateList(model, result.getContent());
+        model.addAttribute("resultPage", result);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public String invalidPage(Model model) {
+        model.addAttribute("conflictMessage", "Use a page number of zero or greater and a page size from 1 to 100.");
+        return "mutation-conflict";
     }
 
     @GetMapping("/new")
@@ -81,12 +101,13 @@ public class EventsController {
     public String createEvent(@Valid @ModelAttribute Event event, BindingResult errors,
                               Model model, RedirectAttributes redirectAttrs) {
         event.setId(0);
+        event.setVersion(null);
         if (!errors.hasErrors()) resolveVenue(event, errors);
         if (errors.hasErrors()) {
             model.addAttribute("venues", venueService.findAll());
             return "events/new";
         }
-        eventService.save(event);
+        mutationService.createEvent(event);
         redirectAttrs.addFlashAttribute("ok_message", "New event added.");
         return "redirect:/events";
     }
@@ -102,19 +123,13 @@ public class EventsController {
     @PostMapping("/updateSave/{id}")
     public String updateSave(@PathVariable("id") long id, @Valid @ModelAttribute Event event,
                              BindingResult errors, Model model, RedirectAttributes redirectAttrs) {
-        Event existing = eventService.findById(id).orElseThrow(() -> new EventNotFoundException(id));
         event.setId(id);
         if (!errors.hasErrors()) resolveVenue(event, errors);
         if (errors.hasErrors()) {
             model.addAttribute("venues", venueService.findAll());
             return "events/update";
         }
-        existing.setName(event.getName());
-        existing.setDate(event.getDate());
-        existing.setTime(event.getTime());
-        existing.setDescription(event.getDescription());
-        existing.setVenue(event.getVenue());
-        eventService.save(existing);
+        mutationService.updateEvent(id, event);
         redirectAttrs.addFlashAttribute("ok_message", "Event updated successfully.");
         return "redirect:/events";
     }
@@ -127,8 +142,7 @@ public class EventsController {
 
     @DeleteMapping("/{id}")
     public String deleteGreeting(@PathVariable("id") long id, RedirectAttributes redirectAttrs) {
-        if (!eventService.existsById(id)) throw new EventNotFoundException(id);
-        eventService.deleteById(id);
+        mutationService.deleteEvent(id);
         redirectAttrs.addFlashAttribute("ok_message", "Event deleted.");
         return "redirect:/events";
     }

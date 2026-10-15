@@ -23,6 +23,13 @@ public class Venue {
 	@Column
 	private long id;
 
+	@Version
+	private Long version;
+
+	@JsonIgnore
+	public Long getVersion() { return version; }
+	public void setVersion(Long version) { this.version = version; }
+
 	@NotBlank(message = "The Venue cannot be empty.")
 	@Size(max = 255, message = "The venue must have 255 characters or less.")
 	@Column(length = 255)

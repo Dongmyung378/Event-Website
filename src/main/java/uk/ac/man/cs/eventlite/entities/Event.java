@@ -6,6 +6,7 @@ import java.time.LocalTime;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -17,6 +18,13 @@ public class Event {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
+
+    @Version
+    private Long version;
+
+    @JsonIgnore
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 
     @NotNull
     @Future(message = "Date must be in the future.")

@@ -1,7 +1,7 @@
 package uk.ac.man.cs.eventlite.config;
 
 import static org.springframework.security.config.Customizer.withDefaults;
-import static org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher;
+import static org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher.pathPattern;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +13,8 @@ import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.ObjectPostProcessor;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -31,7 +33,7 @@ public class Security {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers(antMatcher("/h2-console/**")).denyAll()
+                .requestMatchers(pathPattern("/h2-console/**")).denyAll()
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers(HttpMethod.GET, "/events/new", "/events/update/**",
                         "/venues/new", "/venues/update/**").hasRole(ADMIN_ROLE)
@@ -48,11 +50,19 @@ public class Security {
                 .requestMatchers("/api/**").denyAll()
                 .anyRequest().denyAll())
             .formLogin(login -> login.loginPage("/sign-in").loginProcessingUrl("/sign-in")
-                    .defaultSuccessUrl("/", true).permitAll())
+                    .defaultSuccessUrl("/", true).permitAll()
+                    .withObjectPostProcessor(new ObjectPostProcessor<LoginUrlAuthenticationEntryPoint>() {
+                        @Override
+                        public <O extends LoginUrlAuthenticationEntryPoint> O postProcess(O entryPoint) {
+                            // Preserve the original absolute login redirect when upgrading Security 7.
+                            entryPoint.setFavorRelativeUris(false);
+                            return entryPoint;
+                        }
+                    }))
             .logout(logout -> logout.logoutUrl("/sign-out").logoutSuccessUrl("/").permitAll())
             .httpBasic(withDefaults())
             .exceptionHandling(exceptions -> exceptions.defaultAuthenticationEntryPointFor(
-                    new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED), antMatcher("/api/**")))
+                    new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED), pathPattern("/api/**")))
             // Session/form authentication is supported, so CSRF remains enabled for every write.
             .csrf(withDefaults());
         return http.build();

@@ -20,8 +20,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.http.MediaType;
@@ -43,10 +43,10 @@ public class EventsControllerApiTest {
 	@Autowired
 	private MockMvc mvc;
 
-	@MockBean
+	@MockitoBean
 	private EventService eventService;
 
-	@MockBean
+	@MockitoBean
 	private VenueModelAssembler venueModelAssembler;
 
 	@Test
@@ -156,5 +156,56 @@ public class EventsControllerApiTest {
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
         verify(eventService, times(1)).findById(7L);
+    }
+    @Test
+    void optionalPageIncludesMetadataAndNavigation() throws Exception {
+        Event event = new Event();
+        event.setId(12L);
+        event.setName("Paged event");
+        event.setVersion(8L);
+        when(eventService.findPage("Event", 1, 1)).thenReturn(new org.springframework.data.domain.PageImpl<>(
+            java.util.List.of(event), org.springframework.data.domain.PageRequest.of(1, 1), 3));
+        mvc.perform(get("/api/events").accept(MediaType.APPLICATION_JSON).param("page", "1").param("size", "1").queryParam("q", "Event"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page.number").value(1))
+            .andExpect(jsonPath("$.page.totalElements").value(3))
+            .andExpect(jsonPath("$._embedded.events[0].id").value(12))
+            .andExpect(jsonPath("$._embedded.events[0].version").doesNotExist())
+            .andExpect(jsonPath("$._links.prev.href", containsString("page=0")))
+            .andExpect(jsonPath("$._links.next.href", containsString("page=2")))
+            .andExpect(jsonPath("$._links.next.href", containsString("q=Event")));
+    }
+
+    @Test
+    void invalidPageIsABadRequest() throws Exception {
+        when(eventService.findPage(null, -1, 20)).thenThrow(new IllegalArgumentException("Invalid page"));
+        mvc.perform(get("/api/events").accept(MediaType.APPLICATION_JSON).param("page", "-1"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    void paginationLinksKeepEncodedSearchTermsWhenFollowed() throws Exception {
+        Event event = new Event();
+        event.setId(1L);
+        event.setName("Matched event");
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        for (String query : java.util.List.of("%", "two words", "한글 행사", "a+b", "100%_! & map")) {
+            for (int page = 0; page < 2; page++) {
+                when(eventService.findPage(query, page, 1)).thenReturn(new org.springframework.data.domain.PageImpl<>(
+                    java.util.List.of(event), org.springframework.data.domain.PageRequest.of(page, 1), 3));
+            }
+            String encoded = java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
+            String first = mvc.perform(get(java.net.URI.create("/api/events?page=0&size=1&q=" + encoded)).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            String next = json.readTree(first).at("/_links/next/href").asText();
+            String second = mvc.perform(get(java.net.URI.create(next)).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.number").value(1))
+                .andReturn().getResponse().getContentAsString();
+            String previous = json.readTree(second).at("/_links/prev/href").asText();
+            mvc.perform(get(java.net.URI.create(previous)).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page.number").value(0));
+            verify(eventService, times(2)).findPage(query, 0, 1);
+            verify(eventService).findPage(query, 1, 1);
+        }
     }
 }

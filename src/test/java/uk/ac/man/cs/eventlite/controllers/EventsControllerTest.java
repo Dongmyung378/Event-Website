@@ -32,9 +32,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -42,13 +45,17 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.security.test.context.support.WithMockUser;
 
 import uk.ac.man.cs.eventlite.config.Security;
+import uk.ac.man.cs.eventlite.services.MutationService;
+import uk.ac.man.cs.eventlite.exceptions.EventNotFoundException;
+import uk.ac.man.cs.eventlite.exceptions.VenueNotFoundException;
 import uk.ac.man.cs.eventlite.dao.EventService;
 import uk.ac.man.cs.eventlite.dao.MastodonService;
 import uk.ac.man.cs.eventlite.dao.VenueService;
 import uk.ac.man.cs.eventlite.entities.Event;
 import uk.ac.man.cs.eventlite.entities.Venue;
 
-@ExtendWith(SpringExtension.class)
+@ExtendWith({SpringExtension.class, MockitoExtension.class})
+@MockitoSettings(strictness = Strictness.LENIENT)
 @WebMvcTest(EventsController.class)
 @Import(Security.class)
 @WithMockUser(roles = "ADMINISTRATOR")
@@ -63,14 +70,17 @@ public class EventsControllerTest {
     @Mock
     private Venue venue;
 
-    @MockBean
+    @MockitoBean
     private EventService eventService;
 
-    @MockBean
+    @MockitoBean
     private VenueService venueService;
 
-    @MockBean
+    @MockitoBean
     private MastodonService mastodonService;
+
+    @MockitoBean
+    private MutationService mutationService;
 
     @BeforeEach
     public void resolveExistingVenue() {
@@ -210,7 +220,7 @@ public class EventsControllerTest {
     @Test
     public void testCreateEventSuccess() throws Exception {
         when(venueService.findAll()).thenReturn(Collections.singletonList(venue));
-        when(eventService.save(any(Event.class))).thenReturn(null);
+
 
         mvc.perform(post("/events")
                 .with(csrf())
@@ -225,7 +235,7 @@ public class EventsControllerTest {
             .andExpect(flash().attribute("ok_message", "New event added."));
 
         ArgumentCaptor<Event> captor = ArgumentCaptor.forClass(Event.class);
-        verify(eventService).save(captor.capture());
+        verify(mutationService).createEvent(captor.capture());
         Event savedEvent = captor.getValue();
         assertTrue("Test Event".equals(savedEvent.getName()));
         assertTrue(LocalDate.now().plusDays(1).equals(savedEvent.getDate()));
@@ -279,7 +289,7 @@ public class EventsControllerTest {
         when(eventService.findById(1L)).thenReturn(Optional.of(event));
         when(venueService.findAll()).thenReturn(Collections.singletonList(venue));
 
-        mvc.perform(post("/events/updateSave/1")
+        mvc.perform(post("/events/updateSave/1").param("version", "0")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("id", "1")
@@ -291,7 +301,7 @@ public class EventsControllerTest {
             .andExpect(redirectedUrl("/events"))
             .andExpect(flash().attribute("ok_message", "Event updated successfully."));
 
-        verify(eventService, times(1)).save(any(Event.class));
+        verify(mutationService).updateEvent(eq(1L), any(Event.class));
     }
 
     @Test
@@ -299,7 +309,7 @@ public class EventsControllerTest {
         when(eventService.findById(1L)).thenReturn(Optional.of(event));
         when(venueService.findAll()).thenReturn(Collections.singletonList(venue));
 
-        mvc.perform(post("/events/updateSave/1")
+        mvc.perform(post("/events/updateSave/1").param("version", "0")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("name", "Updated Event")
@@ -310,7 +320,7 @@ public class EventsControllerTest {
             .andExpect(view().name("events/update"))
             .andExpect(model().attributeHasFieldErrors("event", "date"));
 
-        verify(eventService, never()).save(any(Event.class));
+        verify(mutationService, never()).updateEvent(anyLong(), any(Event.class));
     }
 
     @Test
@@ -324,13 +334,14 @@ public class EventsControllerTest {
             .andExpect(redirectedUrl("/events"))
             .andExpect(flash().attribute("ok_message", "Event deleted."));
 
-        verify(eventService).deleteById(1L);
+        verify(mutationService).deleteEvent(1L);
     }
 
     @Test
     public void testDeleteEventNotFound() throws Exception {
         when(eventService.existsById(99L)).thenReturn(false);
 
+        doThrow(new EventNotFoundException(99L)).when(mutationService).deleteEvent(99L);
         mvc.perform(delete("/events/99")
                 .with(csrf())
             )
@@ -466,7 +477,7 @@ public class EventsControllerTest {
     @Test
     public void testCreateEventSuccessForNameLength255() throws Exception {
         when(venueService.findAll()).thenReturn(Collections.singletonList(venue));
-        when(eventService.save(any(Event.class))).thenReturn(null);
+
 
         // Create a valid name with exactly 255 characters.
         String validName = "a".repeat(255);
@@ -484,7 +495,7 @@ public class EventsControllerTest {
             .andExpect(flash().attribute("ok_message", "New event added."));
 
         ArgumentCaptor<Event> captor = ArgumentCaptor.forClass(Event.class);
-        verify(eventService).save(captor.capture());
+        verify(mutationService).createEvent(captor.capture());
         Event savedEvent = captor.getValue();
         assertTrue(validName.equals(savedEvent.getName()));
     }
@@ -492,7 +503,7 @@ public class EventsControllerTest {
     @Test
     public void testCreateEventSuccessForDescriptionLength499() throws Exception {
         when(venueService.findAll()).thenReturn(Collections.singletonList(venue));
-        when(eventService.save(any(Event.class))).thenReturn(null);
+
 
         // Create a valid description with exactly 499 characters.
         String validDescription = "a".repeat(499);
@@ -510,7 +521,7 @@ public class EventsControllerTest {
             .andExpect(flash().attribute("ok_message", "New event added."));
 
         ArgumentCaptor<Event> captor = ArgumentCaptor.forClass(Event.class);
-        verify(eventService).save(captor.capture());
+        verify(mutationService).createEvent(captor.capture());
         Event savedEvent = captor.getValue();
         assertTrue(validDescription.equals(savedEvent.getDescription()));
     }
@@ -580,7 +591,7 @@ public class EventsControllerTest {
         when(eventService.findById(1L)).thenReturn(Optional.of(new Event()));
         when(venueService.findAll()).thenReturn(Collections.singletonList(venue));
 
-        mvc.perform(post("/events/updateSave/1")
+        mvc.perform(post("/events/updateSave/1").param("version", "0")
             .with(csrf())
             .contentType(MediaType.APPLICATION_FORM_URLENCODED)
             .param("id", "1")
@@ -591,7 +602,7 @@ public class EventsControllerTest {
         .andExpect(view().name("events/update"))
         .andExpect(model().attributeHasFieldErrors("event", "name"));
 
-        verify(eventService, never()).save(any(Event.class));
+        verify(mutationService, never()).updateEvent(anyLong(), any(Event.class));
     }
 
     // Update Event: Missing Date
@@ -600,7 +611,7 @@ public class EventsControllerTest {
         when(eventService.findById(1L)).thenReturn(Optional.of(new Event()));
         when(venueService.findAll()).thenReturn(Collections.singletonList(venue));
 
-        mvc.perform(post("/events/updateSave/1")
+        mvc.perform(post("/events/updateSave/1").param("version", "0")
             .with(csrf())
             .contentType(MediaType.APPLICATION_FORM_URLENCODED)
             .param("id", "1")
@@ -611,7 +622,7 @@ public class EventsControllerTest {
         .andExpect(view().name("events/update"))
         .andExpect(model().attributeHasFieldErrors("event", "date"));
 
-        verify(eventService, never()).save(any(Event.class));
+        verify(mutationService, never()).updateEvent(anyLong(), any(Event.class));
     }
 
     // Update Event: Missing Venue
@@ -620,7 +631,7 @@ public class EventsControllerTest {
         when(eventService.findById(1L)).thenReturn(Optional.of(new Event()));
         when(venueService.findAll()).thenReturn(Collections.singletonList(venue));
 
-        mvc.perform(post("/events/updateSave/1")
+        mvc.perform(post("/events/updateSave/1").param("version", "0")
             .with(csrf())
             .contentType(MediaType.APPLICATION_FORM_URLENCODED)
             .param("id", "1")
@@ -631,7 +642,7 @@ public class EventsControllerTest {
         .andExpect(view().name("events/update"))
         .andExpect(model().attributeHasFieldErrors("event", "venue"));
 
-        verify(eventService, never()).save(any(Event.class));
+        verify(mutationService, never()).updateEvent(anyLong(), any(Event.class));
     }
 
     @Test
@@ -661,23 +672,25 @@ public class EventsControllerTest {
         Event existing = new Event();
         existing.setId(1L);
         when(eventService.findById(1L)).thenReturn(Optional.of(existing));
-        mvc.perform(post("/events/updateSave/1").with(csrf())
+        mvc.perform(post("/events/updateSave/1").param("version", "0").with(csrf())
                 .param("id", "2").param("name", "Updated Event")
                 .param("date", LocalDate.now().plusDays(1).toString()).param("venue.id", "1"))
             .andExpect(status().is3xxRedirection());
-        verify(eventService).save(existing);
-        org.junit.jupiter.api.Assertions.assertEquals(1L, existing.getId());
-        org.junit.jupiter.api.Assertions.assertEquals("Updated Event", existing.getName());
+        ArgumentCaptor<Event> submitted = ArgumentCaptor.forClass(Event.class);
+        verify(mutationService).updateEvent(eq(1L), submitted.capture());
+        org.junit.jupiter.api.Assertions.assertEquals(1L, submitted.getValue().getId());
+        org.junit.jupiter.api.Assertions.assertEquals("Updated Event", submitted.getValue().getName());
         verify(eventService, never()).findById(2L);
     }
 
     @Test
     public void updateMissingEventDoesNotInsert() throws Exception {
-        mvc.perform(post("/events/updateSave/99").with(csrf())
+        when(mutationService.updateEvent(eq(99L), any(Event.class))).thenThrow(new EventNotFoundException(99L));
+        mvc.perform(post("/events/updateSave/99").param("version", "0").with(csrf())
                 .param("name", "Updated Event").param("date", LocalDate.now().plusDays(1).toString())
                 .param("venue.id", "1"))
             .andExpect(status().isNotFound());
-        verify(eventService, never()).save(any());
+        verify(mutationService, never()).createEvent(any());
     }
 
     @Test
@@ -727,4 +740,52 @@ public class EventsControllerTest {
            .andExpect(status().isNotFound());
     }
 
+    @Test
+    public void staleUpdateReturnsConflictWithoutCallingCreate() throws Exception {
+        when(mutationService.updateEvent(eq(1L), any(Event.class)))
+            .thenThrow(new uk.ac.man.cs.eventlite.exceptions.MutationConflictException("This record has changed. Reload the latest version."));
+        mvc.perform(post("/events/updateSave/1").with(csrf())
+                .param("version", "2").param("name", "Stale edit")
+                .param("date", LocalDate.now().plusDays(1).toString()).param("venue.id", "1"))
+            .andExpect(status().isConflict())
+            .andExpect(view().name("mutation-conflict"))
+            .andExpect(model().attribute("reloadPath", "/events/update/1"))
+            .andExpect(model().attribute("conflictMessage", org.hamcrest.Matchers.containsString("Reload")));
+        ArgumentCaptor<Event> form = ArgumentCaptor.forClass(Event.class);
+        verify(mutationService).updateEvent(eq(1L), form.capture());
+        org.junit.jupiter.api.Assertions.assertEquals(2L, form.getValue().getVersion());
+        verify(mutationService, never()).createEvent(any());
+    }
+
+    @Test
+    public void databaseConflictDoesNotExposeDatabaseDetails() throws Exception {
+        when(mutationService.updateEvent(eq(1L), any(Event.class)))
+            .thenThrow(new org.springframework.orm.ObjectOptimisticLockingFailureException("private_table", 1L));
+        mvc.perform(post("/events/updateSave/1").with(csrf())
+                .param("version", "0").param("name", "Changed")
+                .param("date", LocalDate.now().plusDays(1).toString()).param("venue.id", "1"))
+            .andExpect(status().isConflict())
+            .andExpect(model().attribute("conflictMessage", org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("private_table"))));
+    }
+
+    @Test
+    public void optionalPaginationUsesDatabasePageAndKeepsSearchQuery() throws Exception {
+        when(eventService.findPage("test", 1, 2)).thenReturn(new org.springframework.data.domain.PageImpl<>(
+            Collections.emptyList(), org.springframework.data.domain.PageRequest.of(1, 2), 7));
+        mvc.perform(get("/events/search").param("q", " test ").param("page", "1").param("size", "2"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("query", "test"))
+            .andExpect(model().attributeExists("resultPage"))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("page=2")))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("q=test")));
+        verify(eventService).findPage("test", 1, 2);
+        verify(eventService, never()).findAll();
+    }
+
+    @Test
+    public void invalidPaginationIsABadRequest() throws Exception {
+        when(eventService.findPage(null, -1, 20)).thenThrow(new IllegalArgumentException("Invalid page"));
+        mvc.perform(get("/events").param("page", "-1"))
+            .andExpect(status().isBadRequest());
+    }
 }

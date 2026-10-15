@@ -89,6 +89,31 @@ class MastodonServiceTest {
         verify(api, never()).send(any());
     }
 
+    @Test
+    void rateLimitServerFailureAndMalformedBodiesAreBackedOffWithoutExposingErrors() throws Exception {
+        for (var fixture : java.util.List.of(response(429, "rate limited"), response(500, "upstream failure"),
+                response(200, "not JSON"), response(200, "null"), response(200, "{}"))) {
+            reset(api);
+            var service = enabled();
+            try {
+                doReturn(fixture).when(api).send(any());
+                assertTrue(service.getTimeline().isEmpty());
+                assertTrue(service.getTimeline().isEmpty());
+                verify(api, times(1)).send(any());
+            } finally { service.stopRefresh(); }
+        }
+    }
+
+    @Test
+    void successfulEmptyFeedDoesNotRepeatExternalCalls() throws Exception {
+        var service = enabled();
+        try {
+            doReturn(response(200, "[]")).when(api).send(any());
+            for (int request = 0; request < 20; request++) assertTrue(service.getTimeline().isEmpty());
+            verify(api, times(1)).send(any());
+        } finally { service.stopRefresh(); }
+    }
+
     @SuppressWarnings("unchecked")
     private HttpResponse<String> response(int status, String body) {
         HttpResponse<String> response = mock(HttpResponse.class);

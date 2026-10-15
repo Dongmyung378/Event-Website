@@ -1,10 +1,9 @@
 package uk.ac.man.cs.eventlite.controllers;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -17,16 +16,16 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import jakarta.validation.Valid;
 import uk.ac.man.cs.eventlite.dao.EventService;
 import uk.ac.man.cs.eventlite.dao.VenueService;
-import uk.ac.man.cs.eventlite.dao.VenueServiceImpl;
 import uk.ac.man.cs.eventlite.entities.Event;
 import uk.ac.man.cs.eventlite.entities.Venue;
 import uk.ac.man.cs.eventlite.exceptions.VenueNotFoundException;
+import uk.ac.man.cs.eventlite.services.MutationService;
 @Controller
 @RequestMapping(value = "/venues", produces = { MediaType.TEXT_HTML_VALUE })
 public class VenuesController {
     @InitBinder("venue")
     public void configureVenueBinding(WebDataBinder binder) {
-        binder.setAllowedFields("id", "name", "capacity", "road", "postcode");
+        binder.setAllowedFields("id", "version", "name", "capacity", "road", "postcode");
     }
 
 	@Autowired
@@ -34,6 +33,9 @@ public class VenuesController {
 
 	@Autowired
 	private VenueService venueService;
+
+    @Autowired
+    private MutationService mutationService;
 
 	@ExceptionHandler(VenueNotFoundException.class)
 	@ResponseStatus(HttpStatus.NOT_FOUND)
@@ -55,8 +57,10 @@ public class VenuesController {
 	}
 
 	@GetMapping
-	public String getAllVenues(Model model) {
-		model.addAttribute("venues", venueService.findAll());
+	public String getAllVenues(@RequestParam(required = false) Integer page,
+                               @RequestParam(required = false) Integer size, Model model) {
+        if (page == null && size == null) model.addAttribute("venues", venueService.findAll());
+        else populatePage(model, null, page, size);
 		return "venues/index";
 	}
 
@@ -72,22 +76,38 @@ public class VenuesController {
     public String createVenue(@Valid @ModelAttribute Venue venue, BindingResult errors,
                               Model model, RedirectAttributes redirectAttrs) {
         venue.setId(0);
+        venue.setVersion(null);
         if (errors.hasErrors()) {
             return "venues/new";
         }
-        venueService.save(venue);
+        mutationService.createVenue(venue);
         redirectAttrs.addFlashAttribute("ok_message", "New venue added.");
         return "redirect:/venues";
     }
 
 //
 	@GetMapping("/search")
-	public String searchVenues(@RequestParam("q") String query, Model model) {
-	    List<Venue> venues = venueService.findByNameContainingIgnoreCase(query.trim());
-		model.addAttribute("venues", venues);
+	public String searchVenues(@RequestParam("q") String query,
+                               @RequestParam(required = false) Integer page,
+                               @RequestParam(required = false) Integer size, Model model) {
+        if (page == null && size == null) model.addAttribute("venues", venueService.findByNameContainingIgnoreCase(query.trim()));
+        else populatePage(model, query.trim(), page, size);
 		model.addAttribute("query", query.trim());
 	    return "venues/index";
 	}
+
+    private void populatePage(Model model, String query, Integer page, Integer size) {
+        Page<Venue> result = venueService.findPage(query, page == null ? 0 : page, size == null ? 20 : size);
+        model.addAttribute("venues", result.getContent());
+        model.addAttribute("resultPage", result);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public String invalidPage(Model model) {
+        model.addAttribute("conflictMessage", "Use a page number of zero or greater and a page size from 1 to 100.");
+        return "mutation-conflict";
+    }
 //
 //
 
@@ -108,24 +128,12 @@ public class VenuesController {
 	                         Model model,
 	                         RedirectAttributes redirectAttrs) {
 
-	    Venue existingVenue = venueService.findById(id)
-	        .orElseThrow(() -> new VenueNotFoundException(id));
 	    venue.setId(id);
 	    if (errors.hasErrors()) {
 	        return "venues/update"; // Reload form if errors exist
 	    }
 
-	    if (!Objects.equals(existingVenue.getRoad(), venue.getRoad())
-	            || !Objects.equals(existingVenue.getPostcode(), venue.getPostcode())) {
-	        existingVenue.setLatitude(null);
-	        existingVenue.setLongitude(null);
-	    }
-
-	    existingVenue.setName(venue.getName());
-	    existingVenue.setCapacity(venue.getCapacity());
-	    existingVenue.setAddress(venue.getRoad(), venue.getPostcode());
-
-	    venueService.save(existingVenue);
+	    mutationService.updateVenue(id, venue);
 
 	    redirectAttrs.addFlashAttribute("ok_message", "Venue updated successfully.");
 	    return "redirect:/venues";
@@ -133,14 +141,10 @@ public class VenuesController {
 
 	@DeleteMapping("/{id}")
 	public String deleteVenue(@PathVariable("id") long id, RedirectAttributes redirectAttrs) {
-		Venue venue = venueService.findById(id)
-			    .orElseThrow(() -> new VenueNotFoundException(id));
-
-		if (!venue.getEvents().isEmpty()) {
+		if (!mutationService.deleteVenue(id)) {
 	        redirectAttrs.addFlashAttribute("error_message", "Venue cannot be deleted because it has events.");
 	        return "redirect:/venues/{id}";
 		}
-		venueService.deleteById(id);
 		redirectAttrs.addFlashAttribute("ok_message", "Venue deleted.");
 
 		return "redirect:/venues";
@@ -153,9 +157,6 @@ public class VenuesController {
 
 		List<Event> events = eventService.getEventsByVenueId(id);
 
-	    events.sort(Comparator
-	        .comparing(Event::getDate, Comparator.nullsLast(Comparator.naturalOrder())));
-
 		model.addAttribute("venue", venue);
 		model.addAttribute("events", events);
 
@@ -167,12 +168,7 @@ public class VenuesController {
 		Venue venue = venueService.findById(id)
 				.orElseThrow(() -> new VenueNotFoundException(id));
 
-		List<Event> allEvents = eventService.getEventsByVenueId(id);
-
-		allEvents.sort(Comparator
-	        .comparing(Event::getDate, Comparator.nullsLast(Comparator.naturalOrder())));
-
-	    List<Event> limitedEvents = VenueServiceImpl.upcomingEvents(allEvents);
+	    List<Event> limitedEvents = venueService.findNext3Events(id);
 
 		model.addAttribute("venue", venue);
 		model.addAttribute("events", limitedEvents);

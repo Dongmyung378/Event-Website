@@ -6,19 +6,27 @@ import java.net.URLEncoder;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Instant;
+import java.time.Duration;
 import java.time.format.DateTimeParseException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import jakarta.annotation.PreDestroy;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.man.cs.eventlite.services.ExternalApiClient;
+import uk.ac.man.cs.eventlite.services.TimelineCache;
 
 @Service
 public class MastodonService {
@@ -28,11 +36,17 @@ public class MastodonService {
     private final String accountId;
     private final ExternalApiClient apiClient;
     private final ObjectMapper mapper;
+    private final ExecutorService refreshExecutor;
+    private final TimelineCache<MastodonStatus> timelineCache;
 
+    @Autowired
     public MastodonService(ExternalApiClient apiClient, ObjectMapper mapper,
                            @Value("${eventlite.mastodon.instance:}") String instance,
                            @Value("${eventlite.mastodon.token:}") String token,
-                           @Value("${eventlite.mastodon.account-id:}") String accountId) {
+                           @Value("${eventlite.mastodon.account-id:}") String accountId,
+                           @Value("${eventlite.mastodon.cache-ttl-millis:30000}") long ttlMillis,
+                           @Value("${eventlite.mastodon.cache-stale-millis:300000}") long staleMillis,
+                           @Value("${eventlite.mastodon.cache-retry-millis:10000}") long retryMillis) {
         this.apiClient = apiClient;
         this.mapper = mapper;
         this.instance = parseInstance(instance);
@@ -41,6 +55,23 @@ public class MastodonService {
         if (this.token.chars().anyMatch(Character::isISOControl)) {
             throw new IllegalArgumentException("Mastodon token must not contain control characters.");
         }
+        this.refreshExecutor = Executors.newSingleThreadExecutor(task -> {
+            Thread thread = new Thread(task, "eventlite-timeline-refresh");
+            thread.setDaemon(true);
+            return thread;
+        });
+        this.timelineCache = new TimelineCache<>(Duration.ofMillis(ttlMillis), Duration.ofMillis(staleMillis),
+                Duration.ofMillis(retryMillis), System::nanoTime, refreshExecutor);
+    }
+
+    public MastodonService(ExternalApiClient apiClient, ObjectMapper mapper,
+                           String instance, String token, String accountId) {
+        this(apiClient, mapper, instance, token, accountId, 30000, 300000, 10000);
+    }
+
+    @PreDestroy
+    public void stopRefresh() {
+        refreshExecutor.shutdownNow();
     }
 
     private static URI parseInstance(String value) {
@@ -92,6 +123,10 @@ public class MastodonService {
 
     public List<MastodonStatus> getTimeline() {
         if (!isEnabled()) { return List.of(); }
+        return timelineCache.get(this::loadTimeline);
+    }
+
+    private Optional<List<MastodonStatus>> loadTimeline() {
         try {
             HttpRequest request = HttpRequest.newBuilder(instance.resolve("/api/v1/accounts/" + accountId
                             + "/statuses?limit=20&exclude_replies=true&exclude_reblogs=true"))
@@ -100,17 +135,17 @@ public class MastodonService {
             HttpResponse<String> response = apiClient.send(request);
             if (response.statusCode() != 200) {
                 log.warn("Mastodon feed failed with HTTP status {}.", response.statusCode());
-                return List.of();
+                return Optional.empty();
             }
             List<MastodonStatus> statuses = mapper.readValue(response.body(), new TypeReference<>() { });
-            if (statuses == null) { return List.of(); }
-            return statuses.stream().filter(this::isPublicAccountStatus).limit(3).toList();
+            if (statuses == null) { return Optional.empty(); }
+            return Optional.of(statuses.stream().filter(this::isPublicAccountStatus).limit(3).toList());
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            return List.of();
+            return Optional.empty();
         } catch (IOException | TimeoutException ex) {
             log.warn("Mastodon feed unavailable or timed out.");
-            return List.of();
+            return Optional.empty();
         }
     }
 
