@@ -1,0 +1,77 @@
+{
+  "verifiedDate": "2026-10-15",
+  "initialRevision": "a18ca3dc7a66c2bf2b8aae7a85ca287edf7a4731",
+  "implementationRevision": "747d4e6d88dc1614e43843c6bee79823e00cbf76",
+  "framework": "Spring Boot 4.0.8",
+  "mavenVersion": "3.9.9",
+  "windows": {
+    "javaVersion": "17.0.13",
+    "nodeVersion": "24.20.0",
+    "java": {
+      "tests": 276,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "javascript": {
+      "tests": 15,
+      "failed": 0
+    }
+  },
+  "independentLinux": {
+    "environment": "Ubuntu 24.04 under WSL, separate source tree, portable JDK and fresh Maven cache",
+    "javaVersion": "17.0.20.1",
+    "nodeVersion": "24.20.0",
+    "java": {
+      "tests": 276,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "javascript": {
+      "tests": 15,
+      "failed": 0
+    }
+  },
+  "coverage": {
+    "BRANCH": {
+      "covered": 232,
+      "missed": 72,
+      "percent": 76.32
+    },
+    "LINE": {
+      "covered": 691,
+      "missed": 34,
+      "percent": 95.31
+    }
+  },
+  "coverageGate": {
+    "lineMinimum": 90,
+    "branchMinimum": 70,
+    "passed": true
+  },
+  "browser": {
+    "tests": 22,
+    "failed": 0,
+    "legacyEventsPreserved": 7,
+    "legacyVenuesPreserved": 4,
+    "restoredEvents": 8,
+    "restoredVenues": 5,
+    "details": "browser-verification.json"
+  },
+  "sourceManifest": "verified-source-sha256.json",
+  "externalApisCalled": false,
+  "wrapper": {
+    "noUnzipColdCacheOnNativeLinuxFilesystem": true,
+    "sha256ValidationRetained": true
+  },
+  "initialRecord": "../verification.json",
+  "ci": "See GitHub Actions for separately executed CI results.",
+  "limits": [
+    "Controlled H2 fixtures, not production load testing.",
+    "Actual Mastodon and Mapbox accounts are not exercised.",
+    "Deprecated official Jackson 2 compatibility module retained; not a complete Jackson 3 migration.",
+    "Default full-list response is preserved and remains unbounded."
+  ],
+  "sourceManifestNormalization": "Git blob bytes, with LF for canonical text; tested Windows and Linux copies compared after CRLF-to-LF normalization."
+}

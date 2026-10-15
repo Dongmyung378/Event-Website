@@ -1,0 +1,145 @@
+{
+  "format": 1,
+  "environment": {
+    "os": "win32",
+    "architecture": "x64",
+    "node": "v24.20.0",
+    "browser": "Chrome 155.0.8059.41"
+  },
+  "integrations": "disabled, no real social posts or Mapbox requests",
+  "checks": [
+    {
+      "name": "public lists and JSON API",
+      "passed": true,
+      "milliseconds": 1925.55
+    },
+    {
+      "name": "unauthenticated administrator routes and writes are rejected",
+      "passed": true,
+      "milliseconds": 87.12
+    },
+    {
+      "name": "invalid login gives a visible error",
+      "passed": true,
+      "milliseconds": 348.64
+    },
+    {
+      "name": "administrator login",
+      "passed": true,
+      "milliseconds": 341.7
+    },
+    {
+      "name": "initial-version file database retains its records and existing rows remain editable",
+      "passed": true,
+      "milliseconds": 1079.37
+    },
+    {
+      "name": "server validation rejects invalid venue capacity",
+      "passed": true,
+      "milliseconds": 173.54
+    },
+    {
+      "name": "create venue through its rendered form",
+      "passed": true,
+      "milliseconds": 106.45
+    },
+    {
+      "name": "search venue through the browser",
+      "passed": true,
+      "milliseconds": 67.4
+    },
+    {
+      "name": "update venue and reject a stale edit from another tab",
+      "passed": true,
+      "milliseconds": 418.91
+    },
+    {
+      "name": "server validation rejects an invalid event date",
+      "passed": true,
+      "milliseconds": 218.51
+    },
+    {
+      "name": "create event through its rendered form",
+      "passed": true,
+      "milliseconds": 127.07
+    },
+    {
+      "name": "search event through the browser",
+      "passed": true,
+      "milliseconds": 39.82
+    },
+    {
+      "name": "update event and reject a stale edit from another tab",
+      "passed": true,
+      "milliseconds": 435.61
+    },
+    {
+      "name": "venue with an event cannot be deleted",
+      "passed": true,
+      "milliseconds": 168.54
+    },
+    {
+      "name": "HTML and JSON next-three ordering agree",
+      "passed": true,
+      "milliseconds": 143.24
+    },
+    {
+      "name": "pagination stays opt-in and enforces bounds",
+      "passed": true,
+      "milliseconds": 47.34
+    },
+    {
+      "name": "mobile event details have no horizontal overflow or script exceptions",
+      "passed": true,
+      "milliseconds": 195.59
+    },
+    {
+      "name": "file database survives application restart",
+      "passed": true,
+      "milliseconds": 11804.35
+    },
+    {
+      "name": "offline backup validates checksum and restores to a new database",
+      "passed": true,
+      "milliseconds": 1339.68
+    },
+    {
+      "name": "restored database serves identical records after independent startup",
+      "passed": true,
+      "milliseconds": 10469.8
+    },
+    {
+      "name": "restored application supports login and event deletion",
+      "passed": true,
+      "milliseconds": 2465.12
+    },
+    {
+      "name": "unreferenced venue can be deleted after its event",
+      "passed": true,
+      "milliseconds": 235.47
+    }
+  ],
+  "legacyDatabaseUpgrade": {
+    "events": 7,
+    "venues": 4,
+    "recordsPreserved": true,
+    "existingEventAndVenueUpdated": true
+  },
+  "backup": {
+    "format": 1,
+    "engine": "H2 MVStore",
+    "method": "offline-file-copy",
+    "bytes": 36864,
+    "sha256": "9e58f1b1b96350350452d28d0153a8117192e25f8a0333c1a024a9cf62809204"
+  },
+  "recoveredRecords": {
+    "events": 8,
+    "venues": 5
+  },
+  "passed": true,
+  "summary": {
+    "passed": 22,
+    "failed": 0
+  },
+  "shutdown": "local JMX SpringApplication shutdown, then process exit before offline copy"
+}

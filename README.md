@@ -2,44 +2,33 @@
 
 # EventLite — Event and Venue Management
 
-EventLite is a **Spring Boot team project** for registering and searching events and venues, and browsing venue schedules. It was developed during **February–May 2025** for **COMP23412 Software Engineering** at the University of Manchester, building on the supplied EventLite starter code.
+EventLite is a Spring Boot team project for registering and searching events and venues, browsing schedules, and managing records through authenticated web forms. The original project ran from **February to May 2025**, using the supplied COMP23412 Software Engineering starter code at the University of Manchester.
 
-[GitHub repository](https://github.com/Dongmyung378/Event-Website) · [Project on my portfolio](https://park-dongmyung.com/projects/project-10/)
+**Dongmyung Park contributed test cases, security implementation, and core management features. The initial map integration was another team member's contribution.** The complete application is a team result. The later maintenance and verification described here are separate from the original assignment.
 
-**Dongmyung Park contributed test cases, security implementation, and core functionality other than map integration.** His work included event and venue management and their verification. Map integration was handled by another team member.
+[GitHub repository](https://github.com/Dongmyung378/Event-Website) | [Portfolio project](https://park-dongmyung.com/projects/project-10/) | [Individual contribution and results](docs/PORTFOLIO.md) | [Architecture and source guide](docs/ARCHITECTURE.md)
 
-| Category | Details |
+![EventLite local demo](docs/images/eventlite-home.png)
+
+## What the project demonstrates
+
+The current version preserves the original event and venue CRUD, searches, schedule pages, maps, administrator controls, and read-only HAL JSON API. Maintenance strengthens how those features handle larger datasets, simultaneous edits, external service failures, and database recovery.
+
+| Area | Current implementation |
 | --- | --- |
-| Original project | February–May 2025, university team assignment |
-| Individual contribution | Test cases · security · core features including event and venue management |
-| Current repository | The team project and subsequent maintenance changes |
-| Maintenance verification | 2026-10-05: 212 Java tests and 10 JavaScript tests passed |
+| Queries | Database-limited next-three queries and popular-venue aggregation; optional database pagination |
+| Schedule consistency | Shared `Clock` and deterministic date, time, case-insensitive name, and ID ordering |
+| Concurrent changes | Transactional mutations, original-version form fields, optimistic locking, and HTTP 409 conflict feedback |
+| Relationships | Shared venue-row locks for event insertion or reassignment and venue deletion; foreign key retained |
+| External feed | 30-second fresh cache, recent successful results for up to 300 seconds, one refresh, and 10-second failure backoff |
+| Recovery | File database restart checks and offline snapshots with SHA-256 validation and restore to a new path |
+| Reproduction | Maven Wrapper, Java and JavaScript tests, browser verification script, and a Windows/Linux CI matrix |
 
-The verification figures and fixes below describe the **maintenance version verified on 2026-10-05**. They are separate from the original 2025 assignment results, and the complete service is a team result.
+The runtime uses **Java 17 and Spring Boot 4.0.8**. The deprecated `spring-boot-jackson2` compatibility module preserves existing JSON serialization while moving the application to Boot 4. This is a temporary Jackson 2 bridge; a complete Jackson 3 migration is outside the current result.
 
-![EventLite local demo home](docs/images/eventlite-home.png)
+## Run the demo
 
-[Project process and individual contribution](docs/PORTFOLIO.md) · [Architecture and source guide](docs/ARCHITECTURE.md) · [Verification record](docs/verification.json)
-
-## Features
-
-- Event and venue lists, details, creation, updates, deletion, and search by name
-- Upcoming and past events, venue-specific events, and the next three events at a venue
-- Login and access control for management features through the `ADMINISTRATOR` role
-- HTML pages and an explicitly read-only HAL JSON API
-- Venue geocoding and map display using a configured Mapbox account
-- Public posts from a configured Mastodon account and posting by administrators
-- A local demo with an in-memory database that runs without external API keys
-
-## Technology
-
-Java 17 · Spring Boot · Spring MVC · Spring Security · Spring Data JPA · Thymeleaf · H2 · Bootstrap · JUnit 5 · Mockito · MockMvc · WebTestClient · JaCoCo
-
-The MVC pages and read-only HAL API share the same services and JPA repositories. Creation, updates, and deletion go through HTML management flows protected by administrator authorization and CSRF checks. Package responsibilities and design decisions are described in the [architecture document](docs/ARCHITECTURE.md).
-
-## Run locally
-
-Requirements: **JDK 17** and an internet connection for the initial dependency download. Maven Wrapper is included, so a separate Maven installation is not required. The JavaScript regression tests use **Node.js 22 or later**.
+Requirements: JDK 17 and internet access for the first Maven download. Maven Wrapper is included. The JavaScript and browser checks additionally require Node.js 22.4 or later and Chrome or Chromium.
 
 Windows PowerShell:
 
@@ -54,48 +43,80 @@ macOS / Linux:
 sh ./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
 ```
 
-Open `http://localhost:8080/home`. The demo credentials are `demo-admin` / `demo-password`. This account is created **only when the `demo` profile is explicitly enabled**. The demo uses a separate in-memory database that is discarded on shutdown and does not change existing files under `db/`. External services are disabled by default in the demo.
+Open `http://localhost:8080/home`. The public demo account is `demo-admin` / `demo-password`, created only when the `demo` profile is explicitly enabled. Its default in-memory database is discarded on shutdown. External services are disabled by default, and no existing file database is opened by the demo command above.
 
-The normal profile has no default administrator account. Set the `EVENTLITE_ADMIN_USERNAME` and `EVENTLITE_ADMIN_PASSWORD` environment variables to use management features. Passwords are encoded with BCrypt for authentication. To open an existing file database, set the environment variables for that database's username and password.
+The normal profile uses a file database and creates no default administrator. Set `EVENTLITE_ADMIN_USERNAME` and `EVENTLITE_ADMIN_PASSWORD` to enable management. `.env.example` lists settings but is not loaded automatically. See [environment configuration](docs/ARCHITECTURE.md#environment-configuration) for database and optional integration settings.
 
-`.env.example` documents the settings and is not loaded automatically. See the [environment configuration guide](docs/ARCHITECTURE.md#environment-configuration) for database, authentication, external service, and Mapbox settings. The local demo's core browsing and management features work without external service accounts.
+## Query compatibility and pagination
 
-## Maintenance verification — 2026-10-05
+Requests without pagination parameters retain their existing full-list HTML and HAL collection responses. For larger datasets, choose the **View 20 per page** link or supply `page` and `size`:
+
+```text
+/events?page=0&size=20
+/events/search?q=music&page=0&size=20
+/venues?page=0&size=20
+/api/events?page=0&size=20&q=music
+/api/venues?page=0&size=20
+```
+
+Pages start at zero, default to 20 records when the size is omitted, and accept sizes from 1 to 100. Invalid bounds return 400. API clients should request `Accept: application/json` or `application/hal+json`. Paged HAL responses add page metadata and navigation links. The original API remains read-only, including for administrators.
+
+## Verification and measured results
+
+The [2026-10-05 record](docs/verification.json) is retained as historical evidence: 212 Java tests, 10 JavaScript tests, 95.24% Java line coverage, and 72.68% branch coverage. The following figures describe the subsequent strengthening work, not the 2025 assignment.
+
+| Check | Current record |
+| --- | --- |
+| Windows Java tests | 276 passed; 0 failures, errors, or skipped tests |
+| JavaScript tests | 15 passed |
+| Java line / branch coverage | 95.31% / 76.32% |
+| Coverage gate | At least 90% line and 70% branch coverage during Maven `verify` |
+| Independent Linux Java run | 276 passed; 0 failures, errors, or skipped tests |
+| Browser and database recovery verification | 22 passed; 0 failures |
+
+For 100,000 events and 100 venues, the next-three and popular-venue operations each reduced SQL statements from **101 to 1**. Loaded entities decreased from **100,100 to 6** for the next-three event query and from **100,100 to 3** for popular venues. All 12 compared query conditions retained identical result SHA-256 values.
+
+These are controlled H2 service-query measurements, using warmups and repeated samples. They are not HTTP response times, production throughput, or browser loading times. The no-parameter full-list operation remains unchanged and still issued 101 statements in the same fixture. Some small-data venue-next-three timings were slightly slower; all raw samples are retained.
+
+See [query comparison](docs/reports/query-comparison.json), [initial measurements](docs/reports/initial-query-benchmark.json), [current measurements](docs/reports/final-query-benchmark.json), and the [current verification record](docs/reports/verification.json). GitHub Actions is configured separately; local results are not presented as completed CI runs.
+
+![Query SQL and loaded entities, all four operations at 100,000 events](docs/images/query-cost.svg)
+
+The full-list path retains its original query structure. At 100,000 events its median was 204.146 → 203.760 ms and p95 was 231.944 → 237.591 ms. Some conditions, including 10,000 events, were slower; this compatibility path is not presented as optimized.
+
+## Reproduce the checks
+
+Windows PowerShell:
 
 ```powershell
 .\mvnw.cmd verify
-node --test src/test/javascript/event-maps.test.cjs
+node --test src/test/javascript/event-maps.test.cjs src/test/javascript/database-snapshot.test.mjs
+node scripts/verify-browser.mjs --output target/browser-verification
+node scripts/query-benchmark.mjs target/benchmark/queries.json current 1000,10000,100000
+node scripts/timeline-benchmark.mjs target/benchmark/timeline.json current 150
 ```
 
-On macOS / Linux, use `sh ./mvnw verify`. Tests use the `test` profile's in-memory database and dedicated test authentication settings.
+On macOS / Linux, replace the first command with `sh ./mvnw verify`; the Node commands are the same. Build the executable JAR before running the browser script. Set `CHROME_PATH` if Chrome is not detected. Each browser run creates a separate temporary file database and a unique report directory. Real Mastodon and Mapbox credentials are disabled during verification.
 
-| Check | Result |
-| --- | --- |
-| Java tests | 212 passed; 0 failures, errors, or skipped tests |
-| JavaScript tests | 10 passed; 0 failures |
-| JaCoCo Java line coverage | 95.24% |
-| JaCoCo Java branch coverage | 72.68% |
-| Browser | Login and event creation → update with the same ID → deletion; 0 JavaScript errors |
-| Layout | Desktop at 1440px and mobile at 390px; no horizontal overflow |
+The browser script checks public and administrator flows, two-tab stale edits, ordering, optional pagination, mobile rendering, restart, offline backup, and restored data. It waits for application health and demo initialization, then requests graceful shutdown through the explicitly enabled local SpringApplication JMX bean before copying the database. To check an actual initial-version file database upgrade, pass `--seed-jar <initial-version-executable.jar>`.
 
-Tests used a separate in-memory database and simulated external responses. No real external account APIs were called. Detailed Java results are generated under `target/surefire-reports/`, and coverage is generated at `target/site/jacoco/index.html`. The [verification and retrospective](docs/PORTFOLIO.md#maintenance-verification) describes the scope and limitations; the recorded results are in [verification.json](docs/verification.json).
+To compare another checkout with the same query harness, set `EVENTLITE_BENCHMARK_PROJECT` to that checkout before invoking the scripts. The initial comparison revision is `a18ca3d`. [The portfolio document](docs/PORTFOLIO.md#reproduce-the-comparison) explains the comparison scope.
 
-GitHub Actions configuration is included. The figures above are from local execution and are separate from GitHub CI results.
+Optional chart regeneration: install Python and matplotlib, then run `python scripts/render-results.py`. Python is not required to run or verify the application.
 
-## Screenshots
+## Database snapshots
 
-![Mobile event details](docs/images/eventlite-details-mobile.png)
+Stop every application process using the database before confirming an offline snapshot. Supply the H2 base path without `.mv.db`:
 
-## Improvements after the team assignment
+```text
+node scripts/database-snapshot.mjs backup db/eventlite-dev target/snapshots/new-snapshot --offline-confirmed
+node scripts/database-snapshot.mjs restore target/snapshots/new-snapshot db/restored-eventlite --offline-confirmed
+```
 
-Maintenance fixes addressed missing authorization checks, small venue datasets, date boundaries, HTML insertion in map popups, stale coordinates after address changes, and incorrect reporting of failed external posts. Regression tests were added. The conditions and results are documented in the [project retrospective](docs/PORTFOLIO.md#conditions-improved-during-maintenance).
+Backup refuses an existing snapshot directory. Restore validates the manifest and checksum and refuses to overwrite an existing database. Point `EVENTLITE_DATASOURCE_URL` at the restored base path and retain the original database authentication settings. This is verified offline H2 recovery, not online backup or a production database recovery guarantee.
 
-## Publication scope and remaining operational work
+## Scope and attribution
 
-This repository is portfolio material covering the team assignment and subsequent maintenance. Real posting and map responses must be checked separately in an environment configured with the relevant credentials. Tokens from earlier source versions must be revoked or rotated through their service providers; removing them from current source does not remove them from existing Git history. The source distribution prepared for publication excludes previous Git history, database files, and personal environment files.
+The source archive excludes database files, credentials, Git metadata, and personal run logs. Current automated checks use controlled fixtures and simulated external responses. Live Mapbox and Mastodon account behavior and production traffic need their own environment-specific verification. Jackson 3 migration, production database operation, TLS, and administrator account lifecycle management remain separate operating concerns.
 
-A public deployment also needs TLS, a production database and backups, administrator account lifecycle management, traffic limits, and dependency updates appropriate to its operating environment.
-
-## Attribution and license
-
-Starter code: COMP23412 EventLite, University of Manchester. This project builds on the starter project provided by Robert Haines, Markel Vigo, Mustafa Mustafa, Tom Carroll, and Caroline Jay. The original copyright and BSD license are retained; see the [original license](LICENSE). The supplied course code is credited to its original authors.
+Starter code: COMP23412 EventLite, University of Manchester, provided by Robert Haines, Markel Vigo, Mustafa Mustafa, Tom Carroll, and Caroline Jay. The original copyright and BSD license are retained in [LICENSE](LICENSE).

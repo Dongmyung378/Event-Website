@@ -1,45 +1,34 @@
 [English](README.md) | [한국어](README.ko.md)
 
-# EventLite — 행사·장소 관리 웹 서비스
+# 행사 및 장소 관리 웹 서비스(EventLite)
 
-행사와 장소를 등록·검색하고 장소별 일정을 확인하는 **Spring Boot 팀 프로젝트**입니다. 맨체스터대학교 **COMP23412 Software Engineering** 수업에서 제공한 EventLite 기본 코드를 바탕으로 **2025년 2월~5월**에 진행했습니다.
+EventLite는 행사와 장소를 등록하고 검색하며, 일정을 조회하고 관리자 폼에서 정보를 관리하는 Spring Boot 팀 프로젝트입니다. 맨체스터대학교 COMP23412 Software Engineering 수업에서 제공한 기본 코드를 바탕으로 **2025년 2월부터 5월까지** 개발했습니다.
 
-[GitHub 저장소](https://github.com/Dongmyung378/Event-Website) · [개인 포트폴리오의 프로젝트 소개](https://park-dongmyung.com/projects/project-10/)
+**박동명은 테스트 케이스 작성, 보안 구현, 행사와 장소 관리 등 주요 기본 기능에 참여했습니다. 최초 지도 연결은 다른 팀원이 담당했습니다.** 전체 서비스는 팀의 결과이며, 이 문서에서 설명하는 이후의 유지보수와 검증은 원래 과제와 구분합니다.
 
-**박동명은 테스트 케이스 작성, 보안 관련 구현, 지도 연결을 제외한 주요 기본 기능 구현에 참여했습니다.** 행사·장소 관리 등 기본 기능과 검증을 담당했으며, 지도 연결은 다른 팀원이 담당했습니다.
+[GitHub 저장소](https://github.com/Dongmyung378/Event-Website) | [포트폴리오 소개](https://park-dongmyung.com/projects/project-10/) | [개인 기여와 결과](docs/PORTFOLIO.ko.md) | [구조와 코드 안내](docs/ARCHITECTURE.ko.md)
 
-| 구분 | 내용 |
+![EventLite 로컬 데모](docs/images/eventlite-home.png)
+
+## 프로젝트에서 보여주는 역량
+
+현재 버전은 행사와 장소의 CRUD, 검색, 일정 화면, 지도, 관리자 기능, 읽기 전용 HAL JSON API를 유지합니다. 이번 개선에서는 데이터 증가, 동시 수정, 외부 서비스 장애, DB 복구에 대응하는 방식을 보강했습니다.
+
+| 영역 | 현재 구현 |
 | --- | --- |
-| 원래 프로젝트 | 2025년 2월~5월, 대학교 팀 과제 |
-| 개인 기여 | 테스트 케이스 작성 · 보안 · 행사·장소 관리 등 주요 기본 기능 |
-| 현재 저장소 | 팀 과제 결과와 이후 유지보수 변경을 함께 포함 |
-| 유지보수 검증 | 2026-10-05, Java 212개·JavaScript 10개 테스트 통과 |
+| 조회 | DB에서 최대 3개를 선택하는 다음 행사 조회와 인기 장소 집계, 선택형 DB 페이지 처리 |
+| 일정 일관성 | 공통 `Clock`, 날짜와 시간, 이름 대소문자 무시, ID 순서에 따른 결정적 정렬 |
+| 동시 변경 | 트랜잭션 단위 변경, 폼 원본 버전 전송, 낙관적 잠금, HTTP 409 충돌 안내 |
+| 데이터 관계 | 행사 등록이나 장소 변경과 장소 삭제에 같은 장소 행 잠금을 적용하고 외래 키 유지 |
+| 외부 피드 | 30초 동안 캐시 사용, 성공 결과를 최대 300초까지 재사용, 갱신 중복 방지, 실패 후 10초 재시도 대기 |
+| 복구 | 파일 DB 재시작 검증, SHA-256 무결성 확인, 새 경로로 복원하는 오프라인 스냅샷 |
+| 재현 | Maven Wrapper, Java와 JavaScript 테스트, 브라우저 검증 스크립트, Windows와 Linux CI 구성 |
 
-아래 검증 수치와 오류 수정은 **2026-10-05 유지보수 버전**의 결과입니다. 이를 2025년 팀 과제 당시의 검증 결과나 개인 단독 개발 성과로 소개하지 않습니다.
+실행 기반은 **Java 17과 Spring Boot 4.0.8**입니다. 기존 JSON 직렬화 결과를 유지하기 위해 폐기 예정인 `spring-boot-jackson2` 호환 모듈을 사용합니다. Boot 4로 실행 기반을 옮긴 결과이며, Jackson 3로의 전면 전환까지 완료한 것은 아닙니다.
 
-![EventLite 로컬 데모 홈](docs/images/eventlite-home.png)
+## 데모 실행
 
-[프로젝트 과정과 개인 기여](docs/PORTFOLIO.ko.md) · [구조와 소스 코드 안내](docs/ARCHITECTURE.ko.md) · [검증 기록](docs/verification.json)
-
-## 주요 기능
-
-- 행사·장소 목록, 상세 조회, 생성, 수정, 삭제 및 이름 검색
-- 예정 행사와 지난 행사 구분, 장소별 행사 및 다음 3개 행사 조회
-- 로그인과 `ADMINISTRATOR` 역할에 따른 관리 기능 접근 제어
-- HTML 화면과 명시적인 읽기 전용 HAL JSON API
-- 설정된 Mapbox 계정으로 장소 좌표 검색과 지도 표시
-- 설정된 Mastodon 계정의 공개 게시물 표시 및 관리자 게시
-- 외부 API 키 없이 실행할 수 있는 메모리 DB 기반 로컬 데모
-
-## 기술
-
-Java 17 · Spring Boot · Spring MVC · Spring Security · Spring Data JPA · Thymeleaf · H2 · Bootstrap · JUnit 5 · Mockito · MockMvc · WebTestClient · JaCoCo
-
-MVC 화면과 읽기 전용 HAL API가 같은 서비스·JPA 저장소를 사용합니다. 생성·수정·삭제는 관리자 권한과 CSRF 검사를 적용한 HTML 관리 기능을 통해 수행합니다. 패키지별 역할과 설계 선택은 [구조 문서](docs/ARCHITECTURE.ko.md)에 정리했습니다.
-
-## 실행
-
-필수: **JDK 17**, 최초 의존성 다운로드를 위한 인터넷 연결. Maven Wrapper가 포함되어 있어 Maven을 별도로 설치할 필요가 없습니다. JavaScript 회귀 테스트에는 **Node.js 22 이상**을 사용합니다.
+JDK 17과 최초 Maven 다운로드를 위한 인터넷 연결이 필요합니다. Maven Wrapper가 포함되어 있습니다. JavaScript와 브라우저 검증에는 Node.js 22.4 이상과 Chrome 또는 Chromium도 필요합니다.
 
 Windows PowerShell:
 
@@ -54,48 +43,78 @@ macOS / Linux:
 sh ./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
 ```
 
-실행 후 `http://localhost:8080/home`으로 접속합니다. 데모 로그인은 `demo-admin` / `demo-password`입니다. 이 계정은 **명시적으로 `demo` 프로필을 켰을 때만** 생성됩니다. 데모 DB는 종료하면 삭제되는 별도 메모리 DB이며, 기존 `db/` 파일을 변경하지 않습니다. 외부 서비스는 데모에서 기본적으로 꺼져 있습니다.
+`http://localhost:8080/home`으로 접속합니다. 공개 데모 계정은 `demo-admin` / `demo-password`이며, `demo` 프로필을 명시적으로 활성화했을 때만 생성됩니다. 기본 데모 DB는 종료하면 사라지는 메모리 DB입니다. 외부 서비스는 기본적으로 비활성화되며, 위 명령은 기존 파일 DB를 열지 않습니다.
 
-일반 프로필에는 기본 관리자 계정이 없습니다. 관리 기능을 쓰려면 `EVENTLITE_ADMIN_USERNAME`, `EVENTLITE_ADMIN_PASSWORD`를 환경 변수로 지정하십시오. 비밀번호는 BCrypt로 인코딩해 인증에 사용합니다. 기존 파일 DB를 열려면 해당 DB의 사용자 이름과 비밀번호를 환경 변수로 지정해야 합니다.
+일반 프로필은 파일 DB를 사용하고 기본 관리자 계정을 생성하지 않습니다. 관리 기능을 사용하려면 `EVENTLITE_ADMIN_USERNAME`, `EVENTLITE_ADMIN_PASSWORD`를 지정하십시오. `.env.example`은 설정 예시이며 자동으로 읽히지 않습니다. DB와 선택적 외부 연동 설정은 [환경 설정 안내](docs/ARCHITECTURE.ko.md#환경-설정)에서 확인할 수 있습니다.
 
-`.env.example`은 설정 예시이며 자동으로 읽히지 않습니다. DB·인증·외부 서비스 환경 변수와 Mapbox 설정은 [환경 설정 안내](docs/ARCHITECTURE.ko.md#환경-설정)를 확인하십시오. 외부 서비스 계정이 없어도 로컬 데모의 기본 조회·관리 기능을 사용할 수 있습니다.
+## 기존 조회와 페이지 처리
 
-## 유지보수 버전 검증 — 2026-10-05
+페이지 관련 인자가 없으면 HTML 전체 목록과 HAL 컬렉션의 기존 응답을 유지합니다. 데이터가 많을 때는 **View 20 per page** 링크를 선택하거나 `page`, `size`를 지정할 수 있습니다.
+
+```text
+/events?page=0&size=20
+/events/search?q=music&page=0&size=20
+/venues?page=0&size=20
+/api/events?page=0&size=20&q=music
+/api/venues?page=0&size=20
+```
+
+페이지 번호는 0부터 시작하고, 크기를 생략하면 20개를 사용합니다. 페이지 크기는 1부터 100까지 허용하며 범위를 벗어나면 400을 반환합니다. API 요청에는 `Accept: application/json` 또는 `application/hal+json`을 지정하십시오. 페이지형 HAL 응답에는 페이지 정보와 이동 링크가 추가됩니다. API의 쓰기 요청은 관리자에게도 허용하지 않습니다.
+
+## 검증과 측정 결과
+
+[2026-10-05 검증 기록](docs/verification.json)은 Java 212개, JavaScript 10개 통과와 Java 줄 커버리지 95.24%, 분기 커버리지 72.68%를 담은 이전 기록으로 보존합니다. 아래 수치는 이후 강화 작업의 결과이며 2025년 과제 당시의 성과로 소급하지 않습니다.
+
+| 검증 | 현재 기록 |
+| --- | --- |
+| Windows Java 테스트 | 276개 통과, 실패와 오류 및 건너뜀 0개 |
+| JavaScript 테스트 | 15개 통과 |
+| Java 선 / 분기 커버리지 | 95.31% / 76.32% |
+| 커버리지 통과 기준 | Maven `verify`에서 줄 90% 이상, 분기 70% 이상 |
+| 별도 Linux Java 실행 | 276개 통과, 실패와 오류 및 건너뜀 0개 |
+| 브라우저와 DB 복구 검증 | 22개 통과, 실패 0개 |
+
+행사 100,000개와 장소 100개 조건에서 다음 행사 3개 조회와 인기 장소 조회의 SQL 실행 수는 각각 **101회에서 1회로 감소**했습니다. 로드한 엔티티는 다음 행사 조회에서 **100,100개에서 6개**, 인기 장소 조회에서 **100,100개에서 3개**로 줄었습니다. 비교한 12개 조회 조건의 결과 SHA-256은 모두 일치했습니다.
+
+이 수치는 워밍업 후 반복 측정한 H2 서비스 조회 결과입니다. HTTP 응답 시간, 운영 처리량, 브라우저 로딩 시간을 의미하지 않습니다. 인자가 없는 전체 목록은 같은 조건에서 SQL 101회를 유지합니다. 데이터가 적은 장소별 다음 행사 조회에서는 시간이 소폭 늘어난 조건도 있어 원시 측정값을 함께 보존합니다.
+
+[조회 비교](docs/reports/query-comparison.json), [초기 측정값](docs/reports/initial-query-benchmark.json), [현재 측정값](docs/reports/final-query-benchmark.json), [현재 검증 기록](docs/reports/verification.json)을 확인할 수 있습니다. GitHub Actions 설정은 별도로 제공하며, 로컬 결과를 CI 실행 결과로 소개하지 않습니다.
+
+![행사 10만 개 조건의 네 조회에서 SQL과 엔티티 로딩 수 비교](docs/images/query-cost.svg)
+
+전체 목록 경로는 조회 구조를 유지했습니다. 행사 10만 개의 중앙값은 204.146 → 203.760ms, p95는 231.944 → 237.591ms였습니다. 1만 개 조건 등 오히려 느려진 결과도 있으며 이 경로를 최적화했다고 주장하지 않습니다.
+
+## 검증 재현
+
+Windows PowerShell:
 
 ```powershell
 .\mvnw.cmd verify
-node --test src/test/javascript/event-maps.test.cjs
+node --test src/test/javascript/event-maps.test.cjs src/test/javascript/database-snapshot.test.mjs
+node scripts/verify-browser.mjs --output target/browser-verification
+node scripts/query-benchmark.mjs target/benchmark/queries.json current 1000,10000,100000
+node scripts/timeline-benchmark.mjs target/benchmark/timeline.json current 150
 ```
 
-macOS / Linux에서는 `sh ./mvnw verify`를 사용합니다. 테스트는 `test` 프로필의 메모리 DB와 테스트 전용 인증 정보를 사용합니다.
+macOS / Linux에서는 첫 명령을 `sh ./mvnw verify`로 바꾸고 Node 명령은 동일하게 사용합니다. 브라우저 검증 전에 실행 가능한 JAR를 빌드해야 합니다. Chrome을 찾지 못하면 `CHROME_PATH`를 지정하십시오. 브라우저 실행마다 별도 임시 파일 DB와 고유한 결과 폴더를 만들며, 실제 Mastodon과 Mapbox 자격 증명은 비활성화합니다.
 
-| 검증 | 결과 |
-| --- | --- |
-| Java 테스트 | 212개 통과, 실패·오류·skip 0개 |
-| JavaScript 테스트 | 10개 통과, 실패 0개 |
-| JaCoCo Java 선 커버리지 | 95.24% |
-| JaCoCo Java 분기 커버리지 | 72.68% |
-| 브라우저 | 로그인·행사 생성 → 같은 ID 수정 → 삭제, JavaScript 오류 0개 |
-| 화면 | PC 1440px·모바일 390px, 가로 넘침 없음 |
+브라우저 스크립트는 공개 조회와 관리자 작업, 두 탭의 수정 충돌, 정렬, 선택형 페이지 처리, 모바일 화면, 재시작, 오프라인 백업과 복원을 확인합니다. 앱 상태와 데모 초기화를 기다린 뒤 검증을 시작하며, 백업 전에는 명시적으로 활성화한 로컬 SpringApplication JMX 관리 빈으로 정상 종료를 요청하고 프로세스 종료를 확인합니다. 실제 초기 버전 파일 DB의 업그레이드를 확인하려면 `--seed-jar <초기-버전-실행-JAR>`를 지정합니다.
 
-테스트는 별도 메모리 DB와 가짜 외부 응답을 사용했습니다. 실제 외부 계정의 API는 호출하지 않았습니다. Java 상세 결과는 `target/surefire-reports/`, 커버리지는 `target/site/jacoco/index.html`에 생성됩니다. 검증 범위와 한계는 [검증 및 회고](docs/PORTFOLIO.ko.md#유지보수-검증)에, 기록은 [verification.json](docs/verification.json)에 있습니다.
+동일한 조회 스크립트로 다른 체크아웃을 비교하려면 `EVENTLITE_BENCHMARK_PROJECT`에 해당 경로를 지정합니다. 비교 기준 초기 리비전은 `a18ca3d`입니다. 자세한 범위는 [비교 재현 안내](docs/PORTFOLIO.ko.md#비교-재현)를 확인하십시오.
 
-GitHub Actions 설정이 포함되어 있습니다. 위 수치는 로컬 실행 기록이며 GitHub CI 실행 결과와는 구분합니다.
+## DB 스냅샷
 
-## 실행 화면
+DB를 사용하는 모든 앱 프로세스를 종료한 후 오프라인 작업을 확인해야 합니다. H2 경로는 `.mv.db` 확장자를 제외한 기본 경로로 지정합니다.
 
-![모바일 행사 상세](docs/images/eventlite-details-mobile.png)
+```text
+node scripts/database-snapshot.mjs backup db/eventlite-dev target/snapshots/new-snapshot --offline-confirmed
+node scripts/database-snapshot.mjs restore target/snapshots/new-snapshot db/restored-eventlite --offline-confirmed
+```
 
-## 팀 과제 이후 개선
+백업은 이미 있는 스냅샷 폴더를 덮어쓰지 않습니다. 복원은 매니페스트와 체크섬을 검증하며 기존 DB를 덮어쓰지 않습니다. 복원한 DB를 실행하려면 `EVENTLITE_DATASOURCE_URL`을 새 기본 경로로 지정하고 원래 DB 인증 설정을 유지해야 합니다. 검증 범위는 오프라인 H2 복구이며, 온라인 백업이나 운영 DB의 복구 보장을 의미하지 않습니다.
 
-권한 검사 누락, 적은 장소 수, 날짜 경계, 지도 팝업의 HTML 삽입, 주소 변경 후 남는 좌표, 외부 게시 실패 표시를 수정하고 회귀 테스트를 추가했습니다. 변경 조건과 결과는 [프로젝트 회고](docs/PORTFOLIO.ko.md#유지보수에서-개선한-조건)에 정리했습니다.
+## 공개 범위와 출처
 
-## 공개 범위와 남은 운영 작업
+소스 ZIP에는 DB 파일, 자격 증명, Git 메타데이터, 개인 실행 일지를 포함하지 않습니다. 자동 검증은 통제된 데이터와 가짜 외부 응답을 사용했습니다. 실제 Mapbox와 Mastodon 계정의 동작, 운영 트래픽은 해당 환경에서 별도로 검증해야 합니다. Jackson 3 전환, 운영 DB 관리, TLS, 관리자 계정의 생성과 폐기는 별도 운영 과제입니다.
 
-이 프로젝트는 팀 과제와 이후 유지보수 결과를 보여주는 포트폴리오 자료입니다. 외부 계정의 실제 게시·지도 응답은 자격 증명을 설정한 환경에서 별도 확인해야 합니다. 과거 소스의 토큰은 해당 서비스에서 폐기·교체해야 하며, 현재 소스에서 제거했다고 기존 Git 이력까지 사라지는 것은 아닙니다. 공개용 배포 자료에는 Git 이력, DB 파일, 개인 환경 파일을 포함하지 않습니다.
-
-공개 서비스 운영에는 TLS, 운영용 DB·백업, 관리자 계정 수명 관리, 트래픽 제한, 의존성 업데이트를 운영 환경에 맞춰 추가해야 합니다.
-
-## 출처와 라이선스
-
-기본 코드: COMP23412 EventLite, University of Manchester. Robert Haines, Markel Vigo, Mustafa Mustafa, Tom Carroll, Caroline Jay가 제공한 기본 프로젝트에서 출발했습니다. 원래 저작권과 BSD 라이선스를 유지합니다. [라이선스 원문](LICENSE)을 확인하십시오. 과목 제공 기본 코드 자체를 개인 구현으로 주장하지 않습니다.
+기본 코드 출처는 University of Manchester의 COMP23412 EventLite이며 제공자는 Robert Haines, Markel Vigo, Mustafa Mustafa, Tom Carroll, Caroline Jay입니다. 원래 저작권과 BSD 라이선스를 [LICENSE](LICENSE)에 유지합니다.

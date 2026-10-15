@@ -2,96 +2,105 @@
 
 # EventLite — Project Process and Individual Contribution
 
-EventLite is an event and venue management team project for COMP23412 Software Engineering at the University of Manchester. This document distinguishes the complete team implementation, Dongmyung Park's individual contribution, and subsequent maintenance. See the [README](../README.md) for run commands and the [architecture document](ARCHITECTURE.md) for code locations and environment settings.
+EventLite manages event and venue records, schedules, public queries, and administrator changes. It combines a team application with later engineering work on query cost, data consistency, failure handling, and reproducible verification. [Run instructions](../README.md) and [architecture details](ARCHITECTURE.md) accompany the source.
 
-[GitHub repository](https://github.com/Dongmyung378/Event-Website) · [Project on my portfolio](https://park-dongmyung.com/projects/project-10/)
+[GitHub repository](https://github.com/Dongmyung378/Event-Website) | [Portfolio project](https://park-dongmyung.com/projects/project-10/)
 
-## Timeline and Work Scope
+## Timeline and attribution
 
-| Stage | Period or verification date | Work |
+| Stage | Period or evidence | Scope |
 | --- | --- | --- |
-| Original team project | February–May 2025 | Implemented event and venue management on the supplied EventLite starter code |
-| Subsequent maintenance | Verified on 2026-10-05 | Fixed issues found during code review, separated external service settings, and improved regression tests and run documentation |
+| Original team project | February to May 2025 | COMP23412 Software Engineering project at the University of Manchester, built on supplied EventLite starter code |
+| Earlier maintenance | Verified 2026-10-05; comparison revision `a18ca3d` | Authorization and input fixes, integration configuration, map regressions, and initial portfolio documentation |
+| Subsequent strengthening | Verified in October 2026 | Database-bounded queries, consistent schedules, concurrent edits, bounded feed cache, recovery tooling, and expanded verification |
 
-The current repository includes work from both stages. The test counts and coverage figures describe the maintenance version verified on 2026-10-05 and are not presented as results from the original 2025 assignment.
+The historical [verification.json](verification.json) remains unchanged: Java 212, JavaScript 10, line coverage 95.24%, and branch coverage 72.68%. Current records are stored separately under [reports](reports/verification.json). Later measurements are not attributed to the 2025 assignment.
 
-## Individual Role
+**Dongmyung Park contributed test cases, security implementation, and core management functionality during the team project.** This included event and venue management and their verification. The initial map integration was handled by another team member. The complete service is the team's work; later maintenance does not redefine every source file or later test as an individual's original contribution.
 
-**Dongmyung Park contributed test cases, security implementation, and core functionality other than map integration.** His work included implementing and verifying features such as event and venue management. Map integration was handled by another team member.
+The supplied course code is credited to Robert Haines, Markel Vigo, Mustafa Mustafa, Tom Carroll, and Caroline Jay. Original copyright and BSD terms are retained in [LICENSE](../LICENSE).
 
-| Contribution area | Description |
-| --- | --- |
-| Test cases | Tests for event and venue queries and changes, required inputs, missing targets, data relationships, and other functional conditions |
-| Security | Security-related implementation, including login and access control for management features |
-| Core functionality | Implementation and verification of the service's core features, including event and venue management |
-| Team map feature | Another team member's responsibility; presented as a feature of the complete service |
+## Problems and engineering decisions
 
-The complete service is the team's work. The architecture and maintenance sections below describe the current service and do not attribute every source file or all subsequently added tests to an individual's original contribution.
+The application already supported normal CRUD flows. Strengthening focused on what happens when data grows, two administrators edit the same record, an external feed fails, or the application must restart from a recovered database. The original fields, paths, security policy, map functionality, and default read-only API responses were retained.
 
-## Problem to Solve
-
-Events need dates, times, descriptions, and venues to be managed together. Visitors need to search by event name and browse venue schedules, while administrators need to create, update, and delete records. Data relationships also require rules such as preventing the deletion of a venue that still has events.
-
-The same data needs to be available through web pages and an API, while changes must be restricted to administrators. This requires both displaying controls according to login state and checking authorization on the server. Maps and social services extend the core functionality, so account configuration or failed responses should not break basic browsing and management flows.
-
-## Implementation Approach
-
-1. Defined the relationship between `Event` and `Venue` and used JPA repositories to query and persist data.
-2. Connected lists, search, detail pages, and CRUD flows through MVC controllers and Thymeleaf forms.
-3. Applied authentication, roles, and CSRF checks to web requests that change data.
-4. Used a shared service layer for HTML pages and the read-only HAL JSON API.
-5. Separated service unit tests, controller tests, and real HTTP integration tests to verify functionality and request flows.
-
-Basic CRUD alone did not cover every condition a user could encounter. Maintenance work reproduced and fixed conditions involving small datasets, changing dates, and failed external requests.
-
-## Conditions Improved During Maintenance
-
-The following changes are included in the current version verified on 2026-10-05.
-
-| Condition | Issue found | Current handling |
+| Area | Initial condition | Change and evidence |
 | --- | --- | --- |
-| Deletion and social posting requests | Management controls and actual HTTP routes had different protection coverage | Administrator role checks on the actual methods and routes; undefined requests denied |
-| Account settings | Tokens and administrator accounts were hardcoded | Environment variable configuration and separate, explicit demo and test accounts |
-| Map popups | Stored names were inserted as HTML strings | DOM and `textContent` display names as text |
-| October–December and events on the current day | Date calculations and upcoming-event rules were inconsistent | Shared date handling and month and year boundary tests |
-| Zero to two venues | Popular-venue lookup always indexed three entries | Returns up to three entries according to the actual dataset size |
-| Multiple events on the same date | Next-event lookup did not adequately account for time order | Sorts by date, time, and name, then returns up to three entries |
-| IDs in update requests | Form IDs could conflict with URL IDs | Loads the existing target using the URL ID and updates only allowed fields |
-| Address changes and failed lookups | Previous coordinates remained attached to a new address | Removes previous coordinates when coordinates for the changed address cannot be obtained |
-| Failed social posts | Failures appeared successful, or posting occurred before checking that the event existed | Checks existence and input before posting, then displays failure feedback when needed |
-| Initial data and dates | Only some venues existed, or dates in successful tests had become past dates | Demo initialization without null venue references and data based on relative dates |
+| Schedule consistency | HTML and API next-event code independently sorted and filtered records | Shared query service, injectable clock, deterministic ID tie-breaks, and date/time-zone boundary tests |
+| Query cost | Next-three and popularity calculations could load complete datasets | DB filtering, limiting, relationship aggregation, optional pagination, and measured SQL/entity counts |
+| Concurrent changes | A form could overwrite data changed after it was opened | Original version fields, transactional checks, JPA optimistic locking, 409 feedback, and actual concurrent-update tests |
+| Relationship changes | Venue deletion could race with event insertion | Both operations lock the same venue row; reference checks and the foreign key are retained |
+| External availability | Repeated page visits could repeat a slow feed request | Fresh cache, bounded stale results, one refresh, failure backoff, and controlled delayed-transport measurement |
+| Execution and recovery | A build result alone did not demonstrate a working recovery flow | Browser-driven CRUD and conflict checks, file DB restart, graceful shutdown, offline snapshots, restored record comparison, and two-OS CI configuration |
 
-The initial map integration was a team member's contribution. Later fixes and verification of map boundary conditions belong to subsequent maintenance. These are kept separate when describing individual contribution and project timing.
+Actual browser verification also exposed a method-filter ordering issue: a valid administrator venue-deletion form could be rejected before its hidden `delete` method was applied. The filter now runs before security. Real servlet-container tests cover administrator forms and ensure that anonymous access, ordinary users, missing CSRF tokens, API writes, and unsupported methods remain blocked.
 
-## Maintenance Verification
+## Quantitative results
 
-The verification date is **2026-10-05**. The [verification JSON](verification.json) records the execution environment and results.
-
-| Item | Record |
+| Verification | Current result |
 | --- | --- |
-| Environment | JDK 17.0.13, Maven 3.9.9 |
-| Java | 212 passed; 0 failures, errors, or skipped tests |
-| JavaScript | 10 passed; 0 failures |
-| Overall Java line coverage | 95.24% |
-| Overall Java branch coverage | 72.68% |
-| Browser | Login and event creation → update with the same ID → deletion |
-| Layout widths | Desktop at 1440px and mobile at 390px; no horizontal overflow |
-| Browser JavaScript errors | 0 |
+| Windows Java tests | 276 passed; 0 failures, errors, or skipped tests |
+| JavaScript tests | 15 passed |
+| Java line coverage | 95.31% (691 / 725) |
+| Java branch coverage | 76.32% (232 / 304) |
+| Maven coverage gates | 90% line and 70% branch thresholds passed |
+| Independent Linux Java run | 276 passed; 0 failures, errors, or skipped tests |
+| Browser verification, including initial DB upgrade | 22 passed; 0 failures |
 
-Java verification includes unit, controller, integration, and security tests. JavaScript verification checks map date boundaries, empty results, zero and invalid coordinates, popup text, and map initialization failures. Tests use separate in-memory databases and simulated HTTP responses, without requests to real external service accounts.
+For the fixture with 100,000 events and 100 venues:
 
-Coverage measures the proportion of code executed; it does not establish complete functional correctness or operational stability. In particular, these records do not guarantee responses from real Mapbox or Mastodon accounts, production traffic behavior, production database and backup operations, or behavior on a wide range of physical mobile devices. GitHub CI results are separate from this local execution record.
+| Operation | Initial SQL | Current SQL | Initial loaded entities | Current loaded entities |
+| --- | ---: | ---: | ---: | ---: |
+| Next three events | 101 | 1 | 100,100 | 6 |
+| Three popular venues | 101 | 1 | 100,100 | 3 |
+| Existing full-event list | 101 | 101 | 100,100 | 100,100 |
 
-## Retrospective
+Across 1,000, 10,000, and 100,000 events, four operations produced 12 comparison conditions. All result SHA-256 values matched. The records include cases with no timing improvement, including slightly slower small-data venue-next-three measurements. Database-bounded queries were retained for their reduced work and stable query scope, rather than claiming that every small request became faster.
 
-Authorization should be verified against actual request methods and routes, as well as what the interface displays. Hiding a button from a user and having the server reject a change request are different conditions.
+[Comparison](reports/query-comparison.json), [initial query measurements](reports/initial-query-benchmark.json), and [current query measurements](reports/final-query-benchmark.json) contain the raw samples and result signatures. The harness uses H2 in memory, 100 venues, five warmups, 21 samples per condition, and a fresh read transaction/persistence context for each sample. Median and p95 describe sequential service queries, not HTTP traffic or production latency. The comparison spans application and runtime revisions, so timing changes are not an isolated measurement of a single code edit.
 
-Tests that pass with normal data can miss small datasets, changing dates, and external request failures. Reproducing failure conditions and retaining them as regression tests made it possible to verify the effect of fixes.
+The feed benchmark invokes the real `MastodonService` with a deterministic delayed transport and no external network. It distinguishes cold and repeated reads and records actual transport calls. Its injected delay is a test condition, not an observed Mastodon service latency.
 
-Presenting a team project also requires distinguishing the complete functionality, individual roles, and subsequent maintenance. This repository maintains those distinctions while providing run instructions and verification records as portfolio material.
+The full-list path retains its original query structure. At 100,000 events its median was 204.146 → 203.760 ms and p95 was 231.944 → 237.591 ms. Some conditions, including 10,000 events, were slower; this compatibility path is not presented as optimized.
 
-## Next Operational Steps
+## Reproduce the comparison
 
-A public deployment needs TLS, a production database and backups, administrator account management, request limits, and dependency updates appropriate to its environment. Real map and social account integrations need additional verification in an environment using the relevant account settings.
+Run commands from the current repository root. [The README](../README.md#reproduce-the-checks) covers the ordinary verification path. The benchmark scripts can measure a separate checkout while retaining the same fixture and harness. A checkout of initial revision `a18ca3d` is needed to rerun the initial side; a source ZIP can run the current side and inspect the supplied historical reports.
 
-Attribution for the supplied course code and its BSD license are retained in the [README attribution section](../README.md#attribution-and-license) and the [original license](../LICENSE).
+Windows PowerShell, assuming the initial checkout is at `../eventlite-initial`:
+
+```powershell
+$env:EVENTLITE_BENCHMARK_PROJECT = (Resolve-Path ../eventlite-initial).Path
+node scripts/query-benchmark.mjs target/benchmark/initial-query.json initial 1000,10000,100000
+node scripts/timeline-benchmark.mjs target/benchmark/initial-timeline.json initial 150
+Remove-Item Env:EVENTLITE_BENCHMARK_PROJECT
+node scripts/query-benchmark.mjs target/benchmark/current-query.json current 1000,10000,100000
+node scripts/timeline-benchmark.mjs target/benchmark/current-timeline.json current 150
+```
+
+macOS / Linux:
+
+```bash
+EVENTLITE_BENCHMARK_PROJECT=../eventlite-initial node scripts/query-benchmark.mjs target/benchmark/initial-query.json initial 1000,10000,100000
+EVENTLITE_BENCHMARK_PROJECT=../eventlite-initial node scripts/timeline-benchmark.mjs target/benchmark/initial-timeline.json initial 150
+node scripts/query-benchmark.mjs target/benchmark/current-query.json current 1000,10000,100000
+node scripts/timeline-benchmark.mjs target/benchmark/current-timeline.json current 150
+```
+
+Use the same machine and an otherwise idle session, and retain all samples. Run query measurement first because it prepares the target checkout's runtime classpath. Generated fixtures use the next day relative to execution, so reproducing an archived absolute-date SHA requires matching that fixture date; comparing both revisions on the same day checks equivalent outputs for the newly generated fixture.
+
+To verify upgrade and recovery from an actual initial-version file database, first build its executable JAR and then run:
+
+```text
+node scripts/verify-browser.mjs --seed-jar <initial-version-executable.jar> --output target/browser-verification
+```
+
+The verifier creates isolated file databases. It checks that the initial logical records survive upgrade, that newly added null version counters become zero, and that migrated event and venue records remain editable. It also verifies restart, checksum-checked offline backup, restore to a new database, equivalent records after startup, login, and deletion. It does not copy or post to a real external account.
+
+## Scope and retrospective
+
+The project provides concrete evidence of backend service development: controlled API contracts, database query analysis, transaction boundaries, concurrency failure handling, automated browser verification, and recoverable local data. Keeping failed or neutral measurements makes the engineering decisions reviewable.
+
+Coverage records executed code; it does not establish complete correctness. Local and independent verification results are distinct from GitHub Actions executions. Real Mapbox/Mastodon account responses, production traffic, and production database recovery are outside the controlled test environment. The Boot 4.0.8 runtime still uses the deprecated Jackson 2 bridge to preserve JSON compatibility; completing Jackson 3 migration is a separate maintenance task.
+
+Original code and historical results are preserved. Source distributions exclude personal logs, database files, credentials, and Git metadata. This keeps the original team contribution, later maintenance, and reproducible public evidence understandable without exposing private working records.

@@ -2,127 +2,141 @@
 
 # EventLite — Architecture and Source Guide
 
-This document describes the current maintenance version. See the [portfolio document](PORTFOLIO.md) for project timing and individual contribution, and the [README](../README.md) for run commands and a summary of verification results.
+This guide describes the maintained application. [The README](../README.md) provides run and verification commands. [The portfolio document](PORTFOLIO.md) separates the original team work, individual contribution, historical maintenance, and subsequent strengthening.
 
-## Request and Data Flow
+## Request and data flow
 
 ```mermaid
 flowchart TD
-    Browser[Browser] --> Security[Spring Security]
+    Browser[Browser] --> Method[Ordered form method filter]
+    Method --> Security[Spring Security and CSRF]
     Client[API client] --> Security
-    Security --> MVC[MVC Controller]
-    Security --> API[Read-only HAL Controller]
-    MVC --> Services[EventService / VenueService]
-    API --> Services
-    Services --> Repository[JPA Repository]
-    Repository --> H2[(H2)]
-    MVC --> Templates[Thymeleaf HTML]
-    API --> Assembler[Model Assembler / HAL JSON]
-    Services --> Geocoding[GeocodingService]
-    MVC --> Mastodon[MastodonService]
-    Geocoding --> HTTP[ExternalApiClient]
-    Mastodon --> HTTP
+    Security --> MVC[HTML controllers]
+    Security --> API[Read-only HAL controllers]
+    MVC --> Query[EventService and VenueService queries]
+    API --> Query
+    MVC --> Mutation[Transactional MutationService]
+    Clock[Shared Clock] --> Query
+    Query --> Repository[JPA repositories]
+    Mutation --> Repository
+    Repository --> H2[(H2 database)]
+    MVC --> Feed[MastodonService and TimelineCache]
+    Mutation --> Geocoding[Optional geocoding]
+    Feed --> HTTP[Bounded external HTTP client]
+    Geocoding --> HTTP
 ```
 
-The security filter distinguishes public queries from changes by administrators. HTML pages and the JSON API use the same event and venue services, while each controller handles its response format. External map and social requests use a separate HTTP adapter.
+HTML pages and HAL responses share query services. Data changes use a separate transactional boundary. The ordered form filter turns the rendered `POST` plus `_method=delete` into the effective `DELETE` before security evaluates its method and route. This preserves the existing browser forms while applying administrator authorization and CSRF checks to the request actually handled by the controller.
 
-## Source Folder Guide
+## Data model and schedule rules
 
-The Java package base is `src/main/java/uk/ac/man/cs/eventlite/`.
+An `Event` belongs to one non-null `Venue`; a venue can have multiple events. Event names, dates, and venues are required. Time and description are optional. Venue records include a name, positive capacity, address, postcode, and optional coordinates. The existing form validation and database foreign key remain in place.
 
-| Location | Responsibilities and files to read first |
+Event forms require a future date. Stored events on the current day are still upcoming. `TimeConfiguration` supplies a `Clock` used by the request date model and schedule queries. Tests can fix that clock to reproduce midnight, year changes, and time-zone boundaries.
+
+The next-three and paged schedule queries order by date, time, case-insensitive name, and ID. Null times come last for the same date. ID resolves remaining ties deterministically. Popular venues order by event count descending, then case-insensitive name and ID, and include venues with zero events when the dataset requires them. Original full-list entry points retain their existing behavior.
+
+## Query boundaries and optional pagination
+
+`EventRepository.findUpcoming` and `findUpcomingAtVenue` apply the date condition, ordering, and three-row limit in the database. They fetch each selected event's venue in the same query. `VenueRepository.findMostPopular` counts relationships in the database rather than loading every venue's complete event collection.
+
+`findPage(query, page, size)` supports lists and name searches. A null or blank query means the full dataset. Search terms are trimmed and matched without case sensitivity; `%`, `_`, and `!` are escaped so the supplied characters remain literal. The page must be zero or greater, and its size must be 1 through 100.
+
+| Request | Response behavior |
 | --- | --- |
-| `entities/` | `Event.java`, `Venue.java`: event and venue fields, input constraints, and JPA relationships |
-| `controllers/` | `EventsController`, `VenuesController`, `HomeController`: HTML queries and form handling |
-| `controllers/*ControllerApi` | Public queries and HAL responses for events and venues |
-| `controllers/ApiController.java` | Entry point for `/api` queries |
-| `dao/` | Event and venue services and JPA repositories; also contains the social adapter `MastodonService` |
-| `assemblers/` | HAL model construction that adds query links to entities |
-| `config/Security.java` | Public routes, administrator roles, CSRF, authentication, and logout settings |
-| `config/IntegrationViewConfig.java` | Public map token, integration availability, and shared date model |
-| `config/data/InitialDataLoader.java` | Initial data creation for the `demo` profile |
-| `services/` | `GeocodingService`, `Coordinates`, and the HTTP client with time limits |
-| `src/main/resources/templates/` | Shared layout and event, venue, and login pages |
-| `src/main/resources/static/js/event-maps.js` | Map display conditions, coordinate validation, and popup creation |
-| `src/main/resources/application*.properties` | Normal and demo environment settings |
-| `src/test/java/` | Service, MVC, API, security, and external adapter tests, plus test database configuration |
-| `src/test/javascript/event-maps.test.cjs` | JavaScript regression tests for map logic |
-| `docs/images/`, `docs/verification.json` | Screenshots and result records from maintenance verification |
+| `/events`, `/venues`, and their searches without page arguments | Original HTML full lists |
+| HTML list or search with `page` or `size` | Database page, result count, and previous/next navigation |
+| `/api/events` and `/api/venues` without page arguments | Original read-only HAL collections |
+| API collection with `page` or `size` | Paged HAL with metadata and navigation; optional `q` search |
+| `/venues/{id}/next3events` and API equivalent | Shared `VenueService.findNext3Events` result |
 
-## Data Model and Scheduling Rules
+The default page number is zero and size is 20 when the other page argument is supplied. Invalid bounds return 400. API clients should send a JSON or HAL `Accept` header. Pagination links preserve the request's encoded search terms, including spaces, Korean text, percent signs, and plus signs.
 
-Each event is associated with one venue, and a venue can have multiple events. An event has a name, a date, and optional time and description fields. A venue stores its name, capacity, road address, postcode, and optional latitude and longitude.
+The no-parameter full-event list is deliberately retained. Its SQL count is not improved by the next-three changes; large datasets should use optional pagination. Measurements and unchanged cases are available in [the comparison report](reports/query-comparison.json).
 
-Creation and update forms validate required values, lengths, and dates. They also check that the selected venue exists; the database foreign key for an event's venue does not allow null. A request to delete a venue with associated events is rejected with an explanatory message.
+## Transactional mutations and conflict handling
 
-Event forms require a future date. When an already stored event reaches the current day, it remains upcoming, so the upcoming list **includes today**. The next three events are sorted by date, time, and name, with events that have no time placed last within the same date. Popular venues are sorted by the number of associated events and return up to three entries according to the actual dataset size.
+`MutationService` groups each create, update, or delete operation and its checks within a transaction. The repositories already provide their own transactional operations; the additional boundary keeps the surrounding lookup, version check, relationship check, mutation, and flush together.
 
-## Key Design Decisions
+Both entities have an internal `@Version` counter. Update forms carry the version originally displayed in a hidden field. A missing or mismatched version is rejected, and JPA's version predicate detects a competing commit after the explicit check. The version field is excluded from JSON, preserving the existing API fields.
 
-### Separate Public Queries from Administrator Changes
+A conflict returns **409** with an explanation and a link to reload the latest form. Submitted values are not silently applied to the newer record. A missing update target remains 404. Creation resets submitted IDs and versions; an update uses the URL ID and only the allowed form fields.
 
-Lists, search, details, and API queries are public. HTML management forms and actual creation, update, deletion, and social posting requests require the `ADMINISTRATOR` role. CSRF checks remain enabled for requests that change data. Undefined access and the H2 console are denied.
+Event insertion or venue reassignment and venue deletion acquire a pessimistic write lock on the same venue row. Deletion checks for referenced events within that transaction. A linked venue is retained and the existing explanatory message is displayed. The foreign key remains the final relationship constraint. These are targeted row locks, not a global application lock.
 
-The interface also shows management controls to administrators, while server authorization protects change requests. Hiding buttons alone does not control change permissions.
+When opening a pre-upgrade file database, Hibernate adds the version columns under schema `update`. `VersionColumnInitializer` runs before demo initialization and fills only null version counters with zero. Existing record content and IDs are retained. The browser verifier can test that upgrade with an initial-version JAR and then edit the migrated records.
 
-### An Explicitly Read-Only API
+## Optional external services
 
-JPA repositories are not automatically exposed through REST. Explicit API controllers query events, venues, and their relationships, and model assemblers build links. API writes are not allowed even for administrators; changes go through the validated web management flow.
+External services remain disabled without their account settings. Requests have bounded timeouts; interruption is preserved. An event's existence and message length are checked before a social post. Failed posting does not appear successful. The feed contains only valid public posts from the configured account.
 
-### URL IDs and Allowed Input Fields
+`TimelineCache` uses elapsed monotonic time and immutable snapshots:
 
-An update request loads the existing target using the URL ID, then changes only allowed fields. A form ID that differs from the URL does not update a different target, and a missing target returns 404. Creation ignores a submitted ID and creates a new record.
-
-### The Relationship Between Addresses and Coordinates
-
-Changing an address removes the coordinates for its previous address. If new coordinates cannot be obtained, the old location is not displayed as the location of the new address. An unchanged address with valid coordinates skips an additional geocoding request. Core event and venue features remain usable without coordinates.
-
-### Optional External Services
-
-Without external account settings, integrations are disabled and the interface displays guidance. HTTP requests have time limits, and requests in progress are cancelled on timeout or interruption. Adapter tests use simulated responses rather than real accounts.
-
-The Mastodon feed displays only public posts from the configured account. Posting checks event existence and input before sending the request, and a failed post is not reported as successful. Browser map tokens and server geocoding tokens use separate settings.
-
-Map popups display stored event and venue names through `textContent`. Empty results do not trigger invalid map bounds calculations; zero coordinates are treated as valid, and out-of-range coordinates are excluded.
-
-## Environment Configuration
-
-`.env.example` documents the available settings. Spring Boot does not load it automatically, so set variables in the shell or execution environment.
-
-| Environment variable | Purpose |
+| Setting | Default behavior |
 | --- | --- |
-| `EVENTLITE_ADMIN_USERNAME`, `EVENTLITE_ADMIN_PASSWORD` | Administrator authentication for the normal profile |
+| Fresh duration | Reuse a successful response, including an empty feed, for 30 seconds |
+| Maximum successful-result age | Return a recent result while refreshing, up to 300 seconds from its load time |
+| Failed refresh backoff | Wait 10 seconds before another refresh attempt |
+| Concurrent refreshes | At most one; other callers do not duplicate the request |
+| Cold request | The first loader can wait for one bounded request; callers without a usable result can receive an empty feed |
+
+Expired results are not displayed indefinitely. Refresh happens asynchronously when an older snapshot exists. The cache improves repeat feed reads; it does not remove the cold external-request cost or accelerate posting.
+
+Changing a venue address clears the previous coordinates before a new geocoding attempt. An unchanged address with valid coordinates skips that lookup. Missing coordinates do not prevent core management. Map popup names use DOM text rather than HTML insertion; empty data, zero coordinates, and invalid coordinates are handled explicitly.
+
+## Runtime and JSON compatibility
+
+The application runs on Java 17 and Spring Boot 4.0.8. Modular MVC and JPA test dependencies and the updated security matcher configuration are used. Existing JSON behavior is retained through the deprecated `spring-boot-jackson2` compatibility module. Jackson 2 annotations and serializers remain in use, including the exclusion of internal version fields. This is not a completed Jackson 3 migration. Removing the bridge later requires checking HAL responses, map payloads, and external response parsing together.
+
+## Environment configuration
+
+`.env.example` is a reference, not an automatically loaded file.
+
+| Variable or Spring property | Purpose |
+| --- | --- |
+| `EVENTLITE_ADMIN_USERNAME`, `EVENTLITE_ADMIN_PASSWORD` | Normal-profile administrator; both are required together |
 | `EVENTLITE_DATASOURCE_URL` | Defaults to `jdbc:h2:file:./db/eventlite-dev` |
-| `EVENTLITE_DATASOURCE_USERNAME`, `EVENTLITE_DATASOURCE_PASSWORD` | File database authentication |
-| `EVENTLITE_DDL_AUTO` | JPA schema handling; defaults to `update` in the normal profile |
-| `EVENTLITE_MASTODON_INSTANCE` | Mastodon instance HTTPS URL |
-| `EVENTLITE_MASTODON_TOKEN`, `EVENTLITE_MASTODON_ACCOUNT_ID` | Posting authorization and the account used for the public feed |
+| `EVENTLITE_DATASOURCE_USERNAME`, `EVENTLITE_DATASOURCE_PASSWORD` | Database authentication |
+| `EVENTLITE_DDL_AUTO` | Schema handling; normal default is `update` |
+| `EVENTLITE_PORT` or `PORT` | HTTP port; default is 8080 |
+| `EVENTLITE_MASTODON_INSTANCE`, `EVENTLITE_MASTODON_TOKEN`, `EVENTLITE_MASTODON_ACCOUNT_ID` | Optional social instance, posting authorization, and feed account |
 | `EVENTLITE_MAPBOX_TOKEN` | Server geocoding token |
-| `EVENTLITE_MAPBOX_PUBLIC_TOKEN` | Public `pk.` token for the browser |
-| `EVENTLITE_PORT` or `PORT` | Server port; defaults to `8080` |
+| `EVENTLITE_MAPBOX_PUBLIC_TOKEN` | Browser map token |
+| `eventlite.integrations.timeout-millis` | External request timeout; default 3000 milliseconds |
+| `eventlite.mastodon.cache-ttl-millis` | Fresh feed duration; default 30000 |
+| `eventlite.mastodon.cache-stale-millis` | Maximum reusable result age; default 300000 |
+| `eventlite.mastodon.cache-retry-millis` | Failure backoff; default 10000 |
 
-The normal profile has no default administrator account. Configuring both an administrator name and password creates an account with a BCrypt-encoded password for authentication. Opening an existing file database requires its own authentication settings.
+The normal profile creates no default administrator. The explicit `demo` profile uses an isolated in-memory database by default and the public demo credentials described in the README. Java tests use isolated profiles and databases; benchmark and browser scripts explicitly select their own databases and disable real integrations. An existing file database still requires its original database credentials.
 
-| Profile | Data and accounts |
+Server geocoding stores coordinates and uses Mapbox's permanent-geocoding option. Account permissions must support that use before enabling it. See [Mapbox's storage documentation](https://docs.mapbox.com/api/search/geocoding/#storing-geocoding-results).
+
+## Browser lifecycle and offline recovery
+
+`scripts/verify-browser.mjs` runs the executable JAR against a temporary file database. It checks health and waits for demo records before browser actions. Chrome uses a separate temporary profile. Normal shutdown invokes the explicitly enabled local SpringApplication admin bean through `StopApplication.java`, then waits for the process to exit before backup or restart.
+
+`database-snapshot.mjs` requires an explicit offline confirmation. Backup creates a new snapshot directory, checks that the source file has not changed, and records the bytes and SHA-256. Restore checks the manifest and file hash and requires a new database base path. It never overwrites an existing database. Recovery verification starts the restored application and compares logical records through the API, then checks login and deletion.
+
+The script requires a full JDK for the local attach helper. It does not enable remote JMX or the application admin bean in ordinary demo commands. Offline file recovery does not establish production database support or online backup.
+
+## Source and verification map
+
+The Java package root is `src/main/java/uk/ac/man/cs/eventlite/`.
+
+| Location | Main responsibility |
 | --- | --- |
-| Normal | File database and administrator account configured through environment variables; no demo data creation |
-| `demo` | Separate in-memory database, an explicitly created demo account, and external integrations disabled by default |
-| `test` | Dedicated in-memory test database and authentication settings; no calls to external accounts |
+| `entities/Event.java`, `entities/Venue.java` | Existing fields, validation, relationship, internal version |
+| `dao/EventRepository.java`, `dao/VenueRepository.java` | Limited schedule queries, aggregation, and database pages |
+| `dao/EventServiceImpl.java`, `dao/VenueServiceImpl.java` | Query services and geocoding-aware venue saving |
+| `services/EventSchedule.java`, `services/PageQuery.java` | Shared schedule rules and safe page/search parameters |
+| `services/MutationService.java` | Atomic mutations and conflict checks |
+| `services/TimelineCache.java`, `dao/MastodonService.java` | Bounded feed cache and social adapter |
+| `config/Forms.java`, `config/Security.java` | Effective method ordering, roles, CSRF, and read-only API policy |
+| `config/TimeConfiguration.java`, `config/IntegrationViewConfig.java` | Injectable clock and shared view data |
+| `config/VersionColumnInitializer.java` | Null version backfill for pre-upgrade databases |
+| `controllers/MutationConflictAdvice.java` | Safe conflict feedback and latest-form link |
+| `src/main/resources/templates/` | Original management forms plus version fields and optional pagination |
+| `src/main/resources/static/js/event-maps.js` | Map data validation and safe popup rendering |
+| `scripts/` | Browser verification, offline snapshots, and controlled benchmarks |
 
-The `demo` profile uses `create-drop`, so its data does not survive shutdown. Initial data uses relative dates. If venues already exist but events do not, initialization links events to stored venues; if events already exist, it does not create duplicates.
-
-Server geocoding currently uses Mapbox v6 with `permanent=true` because coordinates are stored in the database. Check the account's permanent geocoding settings before enabling the real integration. See the [official Mapbox explanation](https://docs.mapbox.com/api/search/geocoding/#storing-geocoding-results).
-
-## Finding Verification Code
-
-| Condition to check | Representative tests |
-| --- | --- |
-| Actual HTTP authorization and CSRF | `MutationSecurityTest`, `SecurityIntegrationTest`, `SecurityConfigurationTest` |
-| Read-only API policy | `ReadOnlyApiIntegrationTest` and API controller tests |
-| HTML forms and CRUD flows | `EventsControllerTest`, `VenuesControllerTest`, and their integration tests |
-| Small venue datasets, coordinates, and the next three events | `VenueServiceRegressionTest`, `EventServiceImplTest` |
-| Partial database initialization and repeated execution | `InitialDataLoaderTest` |
-| External HTTP, posting, and geocoding failures | `ExternalApiClientTest`, `MastodonServiceTest`, `GeocodingServiceTest` |
-| Map dates, coordinates, popups, and initialization failures | `src/test/javascript/event-maps.test.cjs` |
-
-Current verification figures and execution limits are recorded in the [portfolio document](PORTFOLIO.md#maintenance-verification). After application code changes, run both verification commands in the [README](../README.md) to check Java and map logic together.
+Representative tests include `ScheduleClockTest`, `ScheduleQueryIntegrationTest`, `MutationServiceIntegrationTest`, `FormMethodSecurityIntegrationTest`, `MutationSecurityTest`, `TimelineCacheTest`, external-adapter tests, and the JavaScript map/snapshot suites. Maven `verify` enforces the configured coverage gates. The Windows/Linux GitHub Actions matrix also runs browser verification and uploads generated reports. Consult [the current verification record](reports/verification.json) for actual executions; a workflow definition alone is not an execution result.
