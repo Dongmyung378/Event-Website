@@ -10,6 +10,8 @@ EventLite는 행사와 장소를 등록하고 검색하며, 일정을 조회하�
 
 ![EventLite 로컬 데모](docs/images/eventlite-home.png)
 
+실행 화면은 애플리케이션의 원래 영어 UI를 그대로 캡처한 것입니다.
+
 ## 프로젝트에서 보여주는 역량
 
 현재 버전은 행사와 장소의 CRUD, 검색, 일정 화면, 지도, 관리자 기능, 읽기 전용 HAL JSON API를 유지합니다. 이번 개선에서는 데이터 증가, 동시 수정, 외부 서비스 장애, DB 복구에 대응하는 방식을 보강했습니다.
@@ -80,7 +82,7 @@ sh ./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
 
 [조회 비교](docs/reports/query-comparison.json), [초기 측정값](docs/reports/initial-query-benchmark.json), [현재 측정값](docs/reports/final-query-benchmark.json), [현재 검증 기록](docs/reports/verification.json)을 확인할 수 있습니다. GitHub Actions 설정은 별도로 제공하며, 로컬 결과를 CI 실행 결과로 소개하지 않습니다.
 
-![행사 10만 개 조건의 네 조회에서 SQL과 엔티티 로딩 수 비교](docs/images/query-cost.svg)
+![행사 10만 개 조건의 네 조회에서 SQL과 엔티티 로딩 수 비교](docs/images/query-cost.ko.svg)
 
 전체 목록 경로는 조회 구조를 유지했습니다. 행사 10만 개의 중앙값은 204.146 → 203.760ms, p95는 231.944 → 237.591ms였습니다. 1만 개 조건 등 오히려 느려진 결과도 있으며 이 경로를 최적화했다고 주장하지 않습니다.
 
@@ -101,6 +103,10 @@ macOS / Linux에서는 첫 명령을 `sh ./mvnw verify`로 바꾸고 Node 명령
 브라우저 스크립트는 공개 조회와 관리자 작업, 두 탭의 수정 충돌, 정렬, 선택형 페이지 처리, 모바일 화면, 재시작, 오프라인 백업과 복원을 확인합니다. 앱 상태와 데모 초기화를 기다린 뒤 검증을 시작하며, 백업 전에는 명시적으로 활성화한 로컬 SpringApplication JMX 관리 빈으로 정상 종료를 요청하고 프로세스 종료를 확인합니다. 실제 초기 버전 파일 DB의 업그레이드를 확인하려면 `--seed-jar <초기-버전-실행-JAR>`를 지정합니다.
 
 동일한 조회 스크립트로 다른 체크아웃을 비교하려면 `EVENTLITE_BENCHMARK_PROJECT`에 해당 경로를 지정합니다. 비교 기준 초기 리비전은 `a18ca3d`입니다. 자세한 범위는 [비교 재현 안내](docs/PORTFOLIO.ko.md#비교-재현)를 확인하십시오.
+
+차트만 다시 생성하려면 Python과 matplotlib을 설치하고 `python scripts/render-results.py ko`를 실행합니다. 한국어판은 `docs/images/query-cost.ko.svg`에 저장하며, `python scripts/render-results.py en`은 별도의 영어판 `docs/images/query-cost.svg`를 생성합니다. 두 언어는 같은 보존된 조회 보고서를 사용하고, SVG 글자는 보는 환경의 글꼴에 영향을 받지 않도록 경로로 저장합니다. 앱 실행이나 검증에는 Python이 필요하지 않습니다.
+
+한국어판을 다시 생성하려면 한국어 글꼴도 설치돼 있어야 합니다. 생성기는 Malgun Gothic, Noto Sans CJK KR, Noto Sans KR, Apple SD Gothic Neo, NanumGothic 순서로 사용 가능한 글꼴을 선택하며, 하나도 없으면 명확한 오류와 함께 중단합니다. 저장된 SVG를 볼 때는 이 글꼴이 필요하지 않습니다.
 
 ## DB 스냅샷
 

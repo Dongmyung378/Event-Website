@@ -102,7 +102,9 @@ The browser script checks public and administrator flows, two-tab stale edits, o
 
 To compare another checkout with the same query harness, set `EVENTLITE_BENCHMARK_PROJECT` to that checkout before invoking the scripts. The initial comparison revision is `a18ca3d`. [The portfolio document](docs/PORTFOLIO.md#reproduce-the-comparison) explains the comparison scope.
 
-Optional chart regeneration: install Python and matplotlib, then run `python scripts/render-results.py`. Python is not required to run or verify the application.
+Optional chart regeneration: install Python and matplotlib, then run `python scripts/render-results.py en` for `docs/images/query-cost.svg` or `python scripts/render-results.py ko` for `docs/images/query-cost.ko.svg`. Both use the same retained query report and write separate language files. SVG labels are exported as paths so viewing does not depend on installed fonts. Python is not required to run or verify the application.
+
+Korean regeneration also requires an installed Korean font. The generator tries Malgun Gothic, Noto Sans CJK KR, Noto Sans KR, Apple SD Gothic Neo, and NanumGothic in that order, and stops with a clear error if none is available. These fonts are not needed to view the saved SVGs.
 
 ## Database snapshots
 

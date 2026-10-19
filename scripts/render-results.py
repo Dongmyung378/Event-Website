@@ -1,20 +1,43 @@
 """Optional report chart: Python 3 + matplotlib; no application dependency."""
+import argparse
 import json
-import sys
 from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib import font_manager
 from matplotlib.ticker import FuncFormatter
+
+
+def korean_font():
+    candidates = ("Malgun Gothic", "Noto Sans CJK KR", "Noto Sans KR",
+                  "Apple SD Gothic Neo", "NanumGothic")
+    for family in candidates:
+        try:
+            font_manager.findfont(font_manager.FontProperties(family=[family]),
+                                  fallback_to_default=False)
+        except ValueError:
+            continue
+        return family
+    raise RuntimeError("Korean chart generation requires an installed Korean font. "
+                       "Install one of: " + ", ".join(candidates))
+
 
 root = Path(__file__).resolve().parents[1]
 report = json.loads((root / "docs/reports/query-comparison.json").read_text(encoding="utf-8"))
-language = sys.argv[1] if len(sys.argv) > 1 else "en"
-destination = Path(sys.argv[2]) if len(sys.argv) > 2 else root / "docs/images/query-cost.svg"
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("language", nargs="?", choices=("en", "ko"), default="en")
+parser.add_argument("destination", nargs="?", type=Path)
+args = parser.parse_args()
+language = args.language
+filename = "query-cost.ko.svg" if language == "ko" else "query-cost.svg"
+destination = args.destination or root / "docs/images" / filename
+font_family = korean_font() if language == "ko" else "DejaVu Sans"
 destination.parent.mkdir(parents=True, exist_ok=True)
-plt.rcParams.update({"font.family": "Malgun Gothic" if language == "ko" else "DejaVu Sans",
-                     "svg.fonttype": "none", "font.size": 10, "axes.spines.top": False,
+plt.rcParams.update({"font.family": font_family,
+                     "svg.fonttype": "path", "svg.hashsalt": "eventlite-query-cost",
+                     "font.size": 10, "axes.spines.top": False,
                      "axes.spines.right": False})
 operations = ["next-three-events", "popular-three-venues", "venue-next-three-events", "legacy-full-event-list"]
 rows = {r["operation"]: r for r in report["rows"] if r["events"] == 100000}
@@ -43,4 +66,8 @@ axes[0].legend(loc="lower left", bbox_to_anchor=(0, -.35), ncol=2, frameon=False
 fig.suptitle("행사 100,000개와 장소 100개 | 같은 결과를 반환하는 조회" if language == "ko"
              else "100,000 events and 100 venues | identical returned results", fontsize=13, fontweight="bold")
 fig.savefig(destination, metadata={"Date": None, "Description": "Counts from all four operations, not HTTP performance. See query-comparison.json."})
+if destination.suffix.lower() == ".svg":
+    content = destination.read_text(encoding="utf-8")
+    destination.write_text("\n".join(line.rstrip() for line in content.splitlines()) + "\n",
+                           encoding="utf-8", newline="\n")
 print(destination)
