@@ -40,7 +40,8 @@ EventLite는 행사와 장소, 일정, 공개 조회, 관리자 변경을 다루
 | 검증 | 2026-10-19 Windows 로컬 결과 |
 | --- | --- |
 | Windows Java 테스트 | 278개 통과, 실패와 오류 및 건너뜀 0개 |
-| JavaScript 테스트 | 15개 통과 |
+| JavaScript 지도와 스냅샷 테스트 | 15개 통과 |
+| 브라우저 실행 회귀검사 | [2개 통과](reports/browser-launch-verification.json) |
 | Java 줄 커버리지 | 95.31% (691 / 725) |
 | Java 분기 커버리지 | 76.32% (232 / 304) |
 | Maven 커버리지 기준 | 줄 90%, 분기 70% 이상 통과 |

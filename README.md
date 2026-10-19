@@ -68,7 +68,8 @@ The [2026-10-05 record](docs/verification.json) is retained as historical eviden
 | Check | Local Windows result, 2026-10-19 |
 | --- | --- |
 | Windows Java tests | 278 passed; 0 failures, errors, or skipped tests |
-| JavaScript tests | 15 passed |
+| JavaScript map and snapshot tests | 15 passed |
+| Browser launcher regressions | 2 passed |
 | Java line / branch coverage | 95.31% / 76.32% |
 | Coverage gate | At least 90% line and 70% branch coverage during Maven `verify` |
 | Browser and database recovery verification | 22 passed; 0 failures |
@@ -94,6 +95,7 @@ Windows PowerShell:
 ```powershell
 .\mvnw.cmd verify
 node --test src/test/javascript/event-maps.test.cjs src/test/javascript/database-snapshot.test.mjs
+node --test scripts/lib/browser.test.mjs
 node scripts/verify-browser.mjs --output target/browser-verification
 node scripts/query-benchmark.mjs target/benchmark/queries.json current 1000,10000,100000
 node scripts/timeline-benchmark.mjs target/benchmark/timeline.json current 150
@@ -102,6 +104,8 @@ node scripts/timeline-benchmark.mjs target/benchmark/timeline.json current 150
 On macOS / Linux, replace the first command with `sh ./mvnw verify`; the Node commands are the same. Build the executable JAR before running the browser script. Set `CHROME_PATH` if Chrome is not detected. Each browser run creates a separate temporary file database and a unique report directory. Real Mastodon and Mapbox credentials are disabled during verification.
 
 The browser script checks public and administrator flows, two-tab stale edits, ordering, optional pagination, mobile rendering, restart, offline backup, and restored data. It waits for application health and demo initialization, then requests graceful shutdown through the explicitly enabled local SpringApplication JMX bean before copying the database. To check an actual initial-version file database upgrade, pass `--seed-jar <initial-version-executable.jar>`.
+
+The launcher also records `chrome-launch.json` and `chrome-stderr.log` in the run folder. Startup errors report the executable, exit status and captured stderr. Ubuntu CI retains a diagnostic launch of the downloaded Chrome and uses the runner-installed Google Chrome for functional checks, with browser sandboxing enabled. The [separate launcher record](docs/reports/browser-launch-verification.json) covers the two launcher regressions and the 21 fresh-database browser checks after this helper change; the earlier verification record retains its original source hashes and counts.
 
 To compare another checkout with the same query harness, set `EVENTLITE_BENCHMARK_PROJECT` to that checkout before invoking the scripts. The initial comparison revision is `a18ca3d`. [The portfolio document](docs/PORTFOLIO.md#reproduce-the-comparison) explains the comparison scope.
 

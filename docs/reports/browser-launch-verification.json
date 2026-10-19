@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "verifiedDate": "2026-10-19",
+  "scope": "Browser launcher and CI browser selection only; production application and Java tests are unchanged.",
+  "baseRevision": "e89601c62e18d5a3aa358424293f5e6793193bb4",
+  "environment": {
+    "os": "Windows x64",
+    "java": "OpenLogic OpenJDK 17.0.13+11",
+    "node": "24.20.0",
+    "chrome": "155.0.8059.80"
+  },
+  "sourceScope": "Working tree after the launcher change, identified by canonical source hashes below. Earlier ci-repair-verification.json remains the record for its own tested sources.",
+  "javascript": {
+    "mapAndSnapshotTests": 15,
+    "launcherRegressions": 2,
+    "total": 17,
+    "failed": 0,
+    "command": "node --test scripts/lib/browser.test.mjs src/test/javascript/event-maps.test.cjs src/test/javascript/database-snapshot.test.mjs"
+  },
+  "launcherRegressions": [
+    "A browser process that exits before the debugging endpoint reports stderr and exit status and writes an absolute profile path.",
+    "An executable spawn failure is reported immediately and saved to the launch record."
+  ],
+  "browser": {
+    "passed": 21,
+    "failed": 0,
+    "legacySeedJarUsed": false,
+    "allChecks": [
+      {
+        "name": "public lists and JSON API",
+        "passed": true
+      },
+      {
+        "name": "unauthenticated administrator routes and writes are rejected",
+        "passed": true
+      },
+      {
+        "name": "invalid login gives a visible error",
+        "passed": true
+      },
+      {
+        "name": "administrator login",
+        "passed": true
+      },
+      {
+        "name": "server validation rejects invalid venue capacity",
+        "passed": true
+      },
+      {
+        "name": "create venue through its rendered form",
+        "passed": true
+      },
+      {
+        "name": "search venue through the browser",
+        "passed": true
+      },
+      {
+        "name": "update venue and reject a stale edit from another tab",
+        "passed": true
+      },
+      {
+        "name": "server validation rejects an invalid event date",
+        "passed": true
+      },
+      {
+        "name": "create event through its rendered form",
+        "passed": true
+      },
+      {
+        "name": "search event through the browser",
+        "passed": true
+      },
+      {
+        "name": "update event and reject a stale edit from another tab",
+        "passed": true
+      },
+      {
+        "name": "venue with an event cannot be deleted",
+        "passed": true
+      },
+      {
+        "name": "HTML and JSON next-three ordering agree",
+        "passed": true
+      },
+      {
+        "name": "pagination stays opt-in and enforces bounds",
+        "passed": true
+      },
+      {
+        "name": "mobile event details have no horizontal overflow or script exceptions",
+        "passed": true
+      },
+      {
+        "name": "file database survives application restart",
+        "passed": true
+      },
+      {
+        "name": "offline backup validates checksum and restores to a new database",
+        "passed": true
+      },
+      {
+        "name": "restored database serves identical records after independent startup",
+        "passed": true
+      },
+      {
+        "name": "restored application supports login and event deletion",
+        "passed": true
+      },
+      {
+        "name": "unreferenced venue can be deleted after its event",
+        "passed": true
+      }
+    ],
+    "sandboxDisabled": false,
+    "diagnosticFilesWritten": [
+      "chrome-launch.json",
+      "chrome-stderr.log"
+    ],
+    "rawVerificationSha256": "28e951aa9ecdd4e06d9adc086e2bee2f19b46aa3495147e4bea586a73c28ba4d"
+  },
+  "validation": {
+    "workflowYamlParsed": true,
+    "ubuntuDiagnosticScriptBashSyntax": "passed",
+    "javascriptSyntax": "passed",
+    "javaRerun": false,
+    "productionApplicationChanged": false
+  },
+  "ci": {
+    "previousRun": "https://github.com/Dongmyung378/Event-Website/actions/runs/39198334487",
+    "previousObservedResults": "Windows Java 278, map/snapshot JavaScript 15 and browser 21 passed. Ubuntu Java 278 and JavaScript 15 passed; Chrome startup failed before any browser checks.",
+    "originalChromeFailureCause": "Not yet established: the previous helper discarded Chrome stderr and did not report early process termination.",
+    "nextUbuntuRun": "A bounded diagnostic launch captures the same downloaded Chrome stderr without failing the job. Functional checks then use the preinstalled runner Google Chrome. Chrome sandboxing and system settings are retained.",
+    "postChangeRemoteCiResult": "Not claimed by this local verification record."
+  },
+  "canonicalSourceSha256": {
+    "scripts/lib/browser.mjs": "bede53f20b745060ac7699c179f72c8ee4d2532a8a14d1d9586b8a67724c2fcc",
+    "scripts/lib/browser.test.mjs": "dbdd2ed8e7b47f49e3ea492bd79c6b0ee2571bb6d71e2bf518e4cc439c0269cc",
+    ".github/workflows/ci.yml": "fdd5143a4d8e7d78e93d0b241a80fdebd432e7467a1c2e98da267fc754c71752",
+    "scripts/verify-browser.mjs": "eb6cc8cf5f4a342f1097f54f7fef262e8678e6ea2cdc04eaeec51f070eac49a0"
+  },
+  "preservedEarlierRecord": {
+    "path": "docs/reports/ci-repair-verification.json",
+    "canonicalSha256": "027e0962cc1a979178a8661d91b8759f03decce0006117cad2706075d6a2a39e"
+  },
+  "hashNormalization": "UTF-8 source and record text normalized CRLF to LF before SHA-256."
+}

@@ -70,8 +70,9 @@ sh ./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
 | 검증 | 2026-10-19 Windows 로컬 결과 |
 | --- | --- |
 | Windows Java 테스트 | 278개 통과, 실패와 오류 및 건너뜀 0개 |
-| JavaScript 테스트 | 15개 통과 |
-| Java 선 / 분기 커버리지 | 95.31% / 76.32% |
+| JavaScript 지도와 스냅샷 테스트 | 15개 통과 |
+| 브라우저 실행 회귀검사 | 2개 통과 |
+| Java 줄 / 분기 커버리지 | 95.31% / 76.32% |
 | 커버리지 통과 기준 | Maven `verify`에서 줄 90% 이상, 분기 70% 이상 |
 | 브라우저와 DB 복구 검증 | 22개 통과, 실패 0개 |
 
@@ -96,6 +97,7 @@ Windows PowerShell:
 ```powershell
 .\mvnw.cmd verify
 node --test src/test/javascript/event-maps.test.cjs src/test/javascript/database-snapshot.test.mjs
+node --test scripts/lib/browser.test.mjs
 node scripts/verify-browser.mjs --output target/browser-verification
 node scripts/query-benchmark.mjs target/benchmark/queries.json current 1000,10000,100000
 node scripts/timeline-benchmark.mjs target/benchmark/timeline.json current 150
@@ -104,6 +106,8 @@ node scripts/timeline-benchmark.mjs target/benchmark/timeline.json current 150
 macOS / Linux에서는 첫 명령을 `sh ./mvnw verify`로 바꾸고 Node 명령은 동일하게 사용합니다. 브라우저 검증 전에 실행 가능한 JAR를 빌드해야 합니다. Chrome을 찾지 못하면 `CHROME_PATH`를 지정하십시오. 브라우저 실행마다 별도 임시 파일 DB와 고유한 결과 폴더를 만들며, 실제 Mastodon과 Mapbox 자격 증명은 비활성화합니다.
 
 브라우저 스크립트는 공개 조회와 관리자 작업, 두 탭의 수정 충돌, 정렬, 선택형 페이지 처리, 모바일 화면, 재시작, 오프라인 백업과 복원을 확인합니다. 앱 상태와 데모 초기화를 기다린 뒤 검증을 시작하며, 백업 전에는 명시적으로 활성화한 로컬 SpringApplication JMX 관리 빈으로 정상 종료를 요청하고 프로세스 종료를 확인합니다. 실제 초기 버전 파일 DB의 업그레이드를 확인하려면 `--seed-jar <초기-버전-실행-JAR>`를 지정합니다.
+
+실행 폴더에는 `chrome-launch.json`과 `chrome-stderr.log`도 저장합니다. Chrome 시작 오류에는 실행 파일, 종료 상태와 수집한 stderr가 표시됩니다. Ubuntu CI는 다운로드한 Chrome의 진단 실행 로그를 보존하고, 실제 기능 검사는 러너에 설치된 Google Chrome을 샌드박스가 활성화된 상태로 실행합니다. [별도 실행 도구 검증 기록](docs/reports/browser-launch-verification.json)에 도우미 변경 후 실행한 회귀검사 2개와 새 DB 브라우저 검사 21개를 담았으며, 이전 기록의 소스 해시와 검사 수는 유지합니다.
 
 동일한 조회 스크립트로 다른 체크아웃을 비교하려면 `EVENTLITE_BENCHMARK_PROJECT`에 해당 경로를 지정합니다. 비교 기준 초기 리비전은 `a18ca3d`입니다. 자세한 범위는 [비교 재현 안내](docs/PORTFOLIO.ko.md#비교-재현)를 확인하십시오.
 

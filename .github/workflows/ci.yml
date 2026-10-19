@@ -36,9 +36,30 @@ jobs:
         run: .\mvnw.cmd -B --no-transfer-progress verify
       - name: Map and database snapshot regressions
         run: node --test src/test/javascript/event-maps.test.cjs src/test/javascript/database-snapshot.test.mjs
+      - name: Browser launcher regressions
+        run: node --test scripts/lib/browser.test.mjs
+      - name: Diagnose downloaded Chrome and select the Ubuntu runner browser
+        id: ubuntu_chrome
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          DOWNLOADED_CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          diagnostics="$PWD/target/browser-verification/chrome-probe"
+          mkdir -p "$diagnostics"
+          "$DOWNLOADED_CHROME" --version > "$diagnostics/downloaded-version.log" 2>&1 || true
+          set +e
+          timeout 10s "$DOWNLOADED_CHROME" --headless=new --disable-gpu --disable-background-networking --disable-component-update --no-first-run --no-default-browser-check --remote-debugging-port=0 --remote-debugging-address=127.0.0.1 --user-data-dir="$diagnostics/profile" about:blank > "$diagnostics/downloaded-stdout.log" 2> "$diagnostics/downloaded-stderr.log"
+          probe_status=$?
+          set -e
+          printf '%s\n' "$probe_status" > "$diagnostics/downloaded-exit-code.log"
+          cat "$diagnostics/downloaded-stderr.log"
+          runner_chrome="$(command -v google-chrome)"
+          "$runner_chrome" --version | tee "$diagnostics/runner-version.log"
+          printf 'chrome-path=%s\n' "$runner_chrome" >> "$GITHUB_OUTPUT"
       - name: Browser CRUD, conflict, restart, backup and restore
         env:
-          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          CHROME_PATH: ${{ steps.ubuntu_chrome.outputs.chrome-path || steps.chrome.outputs.chrome-path }}
         run: node scripts/verify-browser.mjs --output target/browser-verification
       - name: Test and coverage artifacts
         if: always()
@@ -50,3 +71,5 @@ jobs:
             target/site/jacoco/
             target/browser-verification/**/verification.json
             target/browser-verification/**/*.png
+            target/browser-verification/**/*.log
+            target/browser-verification/**/chrome-launch.json

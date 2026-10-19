@@ -1,6 +1,6 @@
-import { access, mkdir } from 'node:fs/promises';
+import { access, mkdir, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
 export async function waitFor(check, message, timeout = 15000) {
@@ -90,29 +90,68 @@ class Cdp {
 
 export async function startBrowser(workDirectory) {
   const binary = await chromePath();
-  const profile = join(workDirectory, 'chrome-profile');
+  const directory = resolve(workDirectory);
+  const profile = join(directory, 'chrome-profile');
   await mkdir(profile, { recursive: true });
-  const child = spawn(binary, ['--headless=new', '--disable-gpu', '--disable-background-networking',
+  const args = ['--headless=new', '--disable-gpu', '--disable-background-networking',
     '--disable-component-update', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0',
-    '--window-size=1440,1100', `--user-data-dir=${profile}`, 'about:blank'],
+    '--remote-debugging-address=127.0.0.1', '--window-size=1440,1100', `--user-data-dir=${profile}`, 'about:blank'];
+  const child = spawn(binary, args,
     { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
   let stderr = '';
   let startError;
   child.stderr.on('data', bytes => { stderr = `${stderr}${bytes}`.slice(-32000); });
   child.on('error', error => { startError = error; });
+  async function saveDiagnostics(status) {
+    await writeFile(join(directory, 'chrome-stderr.log'), stderr);
+    await writeFile(join(directory, 'chrome-launch.json'), `${JSON.stringify({
+      binary, args, profile, status, exitCode: child.exitCode, signalCode: child.signalCode,
+      spawnError: startError?.message
+    }, null, 2)}\n`);
+  }
+  function startupFailure(message, cause) {
+    return new Error(`${message}\nChrome: ${binary}\nProfile: ${profile}\nChrome stderr:\n${stderr.slice(-6000) || '(empty)'}`,
+      cause ? { cause } : undefined);
+  }
   let endpoint;
   try {
-    endpoint = await waitFor(() => {
-      if (startError) throw startError;
-      return stderr.match(/DevTools listening on (ws:\/\/[^\s]+)/)?.[1];
-    }, 'Chrome did not expose its local debugging endpoint');
+    endpoint = await new Promise((resolveEndpoint, reject) => {
+      function cleanup() {
+        clearTimeout(timeout);
+        child.stderr.off('data', ready);
+        child.off('error', failed);
+        child.off('close', closed);
+      }
+      function ready() {
+        const address = stderr.match(/DevTools listening on (ws:\/\/[^\s]+)/)?.[1];
+        if (address) { cleanup(); resolveEndpoint(address); }
+      }
+      function failed(error) {
+        cleanup(); reject(startupFailure(`Chrome could not start: ${error.message}`, error));
+      }
+      function closed(code, signal) {
+        cleanup(); reject(startupFailure(`Chrome exited before exposing its local debugging endpoint (code ${code}, signal ${signal}).`));
+      }
+      const timeout = setTimeout(() => {
+        cleanup(); reject(startupFailure('Chrome did not expose its local debugging endpoint.'));
+      }, 15000);
+      child.stderr.on('data', ready);
+      child.once('error', failed);
+      child.once('close', closed);
+    });
+    await saveDiagnostics('debugging endpoint ready');
   } catch (error) {
     child.kill();
+    await saveDiagnostics('startup failed');
     throw error;
   }
   let browser;
   try { browser = await Cdp.connect(endpoint); }
-  catch (error) { child.kill(); throw error; }
+  catch (error) {
+    child.kill();
+    await saveDiagnostics('debugging connection failed');
+    throw error;
+  }
   const httpOrigin = endpoint.replace(/^ws:/, 'http:').split('/devtools/')[0];
   const sessions = [];
   async function newPage() {
@@ -170,6 +209,7 @@ export async function startBrowser(workDirectory) {
       try { await browser.send('Browser.close'); } catch { /* Chrome may close before acknowledging. */ }
       browser.close();
       if (child.exitCode === null) child.kill();
+      await saveDiagnostics('closed');
     }
   };
 }

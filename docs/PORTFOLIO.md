@@ -40,7 +40,8 @@ Actual browser verification also exposed a method-filter ordering issue: a valid
 | Verification | Local Windows result, 2026-10-19 |
 | --- | --- |
 | Windows Java tests | 278 passed; 0 failures, errors, or skipped tests |
-| JavaScript tests | 15 passed |
+| JavaScript map and snapshot tests | 15 passed |
+| Browser launcher regressions | [2 passed](reports/browser-launch-verification.json) |
 | Java line coverage | 95.31% (691 / 725) |
 | Java branch coverage | 76.32% (232 / 304) |
 | Maven coverage gates | 90% line and 70% branch thresholds passed |
