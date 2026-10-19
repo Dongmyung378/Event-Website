@@ -65,20 +65,23 @@ Pages start at zero, default to 20 records when the size is omitted, and accept 
 
 The [2026-10-05 record](docs/verification.json) is retained as historical evidence: 212 Java tests, 10 JavaScript tests, 95.24% Java line coverage, and 72.68% branch coverage. The following figures describe the subsequent strengthening work, not the 2025 assignment.
 
-| Check | Current record |
+| Check | Local Windows result, 2026-10-19 |
 | --- | --- |
-| Windows Java tests | 276 passed; 0 failures, errors, or skipped tests |
+| Windows Java tests | 278 passed; 0 failures, errors, or skipped tests |
 | JavaScript tests | 15 passed |
 | Java line / branch coverage | 95.31% / 76.32% |
 | Coverage gate | At least 90% line and 70% branch coverage during Maven `verify` |
-| Independent Linux Java run | 276 passed; 0 failures, errors, or skipped tests |
 | Browser and database recovery verification | 22 passed; 0 failures |
+
+Two new regressions verify H2 database isolation between Spring contexts: opening another context preserves existing rows, and closing it preserves the other context's schema and rows. The `test` profile now assigns each context its own memory database.
+
+The [2026-10-19 local record](docs/reports/ci-repair-verification.json) contains the JDK 17 results above, including the browser run with a retained legacy JAR. The [2026-10-15 record](docs/reports/verification.json) preserves the earlier Windows/Linux 276-test results. GitHub Actions runs the 21 common browser checks with a fresh database; the optional `--seed-jar` argument adds the legacy database upgrade check.
 
 For 100,000 events and 100 venues, the next-three and popular-venue operations each reduced SQL statements from **101 to 1**. Loaded entities decreased from **100,100 to 6** for the next-three event query and from **100,100 to 3** for popular venues. All 12 compared query conditions retained identical result SHA-256 values.
 
 These are controlled H2 service-query measurements, using warmups and repeated samples. They are not HTTP response times, production throughput, or browser loading times. The no-parameter full-list operation remains unchanged and still issued 101 statements in the same fixture. Some small-data venue-next-three timings were slightly slower; all raw samples are retained.
 
-See [query comparison](docs/reports/query-comparison.json), [initial measurements](docs/reports/initial-query-benchmark.json), [current measurements](docs/reports/final-query-benchmark.json), and the [current verification record](docs/reports/verification.json). GitHub Actions is configured separately; local results are not presented as completed CI runs.
+See [query comparison](docs/reports/query-comparison.json), [initial measurements](docs/reports/initial-query-benchmark.json), [current measurements](docs/reports/final-query-benchmark.json), and the [2026-10-15 verification record](docs/reports/verification.json). GitHub Actions is configured separately; local results are not presented as completed CI runs.
 
 ![Query SQL and loaded entities, all four operations at 100,000 events](docs/images/query-cost.svg)
 

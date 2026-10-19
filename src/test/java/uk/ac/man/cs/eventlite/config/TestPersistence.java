@@ -1,6 +1,7 @@
 package uk.ac.man.cs.eventlite.config;
 
 import java.util.Properties;
+import java.util.UUID;
 
 import javax.sql.DataSource;
 
@@ -31,7 +32,7 @@ public class TestPersistence {
 	private final static String PACKAGES = "uk.ac.man.cs.eventlite.entities";
 
 	// Connection properties.
-	private final static String DB_PATH = "mem:eventlite-test";
+	private final static String DB_PATH = "mem:eventlite-test-";
 	private final static String DB_OPTS = "DB_CLOSE_DELAY=-1";
 
 	// Hibernate properties.
@@ -42,7 +43,8 @@ public class TestPersistence {
 
 	@Bean
 	public DataSource dataSource() {
-		String dbUrl = "jdbc:h2:" + DB_PATH + ";" + DB_OPTS;
+		// Each Spring context owns its schema, including Hibernate's create-drop lifecycle.
+		String dbUrl = "jdbc:h2:" + DB_PATH + UUID.randomUUID() + ";" + DB_OPTS;
 
 		DriverManagerDataSource dataSource = new DriverManagerDataSource();
 		dataSource.setDriverClassName("org.h2.Driver");

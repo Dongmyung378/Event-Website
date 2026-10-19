@@ -139,4 +139,6 @@ Java 패키지 기본 경로는 `src/main/java/uk/ac/man/cs/eventlite/`입니다
 | `src/main/resources/static/js/event-maps.js` | 지도 데이터 검증과 안전한 팝업 표시 |
 | `scripts/` | 브라우저 검증, 오프라인 스냅샷, 통제된 성능 측정 |
 
-대표 검증 코드는 `ScheduleClockTest`, `ScheduleQueryIntegrationTest`, `MutationServiceIntegrationTest`, `FormMethodSecurityIntegrationTest`, `MutationSecurityTest`, `TimelineCacheTest`, 외부 연동 테스트, JavaScript 지도 및 스냅샷 테스트입니다. Maven `verify`는 설정한 커버리지 기준을 적용합니다. Windows와 Linux GitHub Actions 구성은 브라우저 검증과 결과 업로드도 포함합니다. 실제 실행 결과는 [현재 검증 기록](reports/verification.json)에서 확인할 수 있으며, 설정 파일이 있다는 사실을 실행 성공으로 간주하지 않습니다.
+`test` 프로필은 Spring 컨텍스트마다 별도 H2 메모리 DB를 생성합니다. `TestPersistenceIsolationTest`는 다른 컨텍스트를 열거나 닫아도 기존 스키마와 행이 유지되는지 확인합니다.
+
+대표 검증 코드는 `ScheduleClockTest`, `ScheduleQueryIntegrationTest`, `MutationServiceIntegrationTest`, `FormMethodSecurityIntegrationTest`, `MutationSecurityTest`, `TimelineCacheTest`, 외부 연동 테스트, JavaScript 지도 및 스냅샷 테스트입니다. Maven `verify`는 설정한 커버리지 기준을 적용합니다. Windows와 Linux GitHub Actions 구성은 브라우저 검증과 결과 업로드도 포함합니다. 실제 실행 결과는 [2026-10-19 로컬 검증](reports/ci-repair-verification.json)과 [이전 검증 기록](reports/verification.json)에서 확인할 수 있으며, 설정 파일이 있다는 사실을 실행 성공으로 간주하지 않습니다.

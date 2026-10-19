@@ -67,20 +67,23 @@ sh ./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
 
 [2026-10-05 검증 기록](docs/verification.json)은 Java 212개, JavaScript 10개 통과와 Java 줄 커버리지 95.24%, 분기 커버리지 72.68%를 담은 이전 기록으로 보존합니다. 아래 수치는 이후 강화 작업의 결과이며 2025년 과제 당시의 성과로 소급하지 않습니다.
 
-| 검증 | 현재 기록 |
+| 검증 | 2026-10-19 Windows 로컬 결과 |
 | --- | --- |
-| Windows Java 테스트 | 276개 통과, 실패와 오류 및 건너뜀 0개 |
+| Windows Java 테스트 | 278개 통과, 실패와 오류 및 건너뜀 0개 |
 | JavaScript 테스트 | 15개 통과 |
 | Java 선 / 분기 커버리지 | 95.31% / 76.32% |
 | 커버리지 통과 기준 | Maven `verify`에서 줄 90% 이상, 분기 70% 이상 |
-| 별도 Linux Java 실행 | 276개 통과, 실패와 오류 및 건너뜀 0개 |
 | 브라우저와 DB 복구 검증 | 22개 통과, 실패 0개 |
+
+H2 테스트 DB의 Spring 컨텍스트 격리를 확인하는 회귀검사 2개를 추가했습니다. 다른 컨텍스트를 열어도 기존 행이 유지되고, 다른 컨텍스트를 닫아도 사용 중인 스키마와 행이 유지되는지 검사합니다. `test` 프로필은 컨텍스트마다 별도 메모리 DB를 사용합니다.
+
+[2026-10-19 로컬 검증 기록](docs/reports/ci-repair-verification.json)에 위 JDK 17 결과와 보존된 이전 JAR를 사용한 브라우저 검증을 담았습니다. 이전 Windows와 Linux의 Java 276개 결과는 [2026-10-15 기록](docs/reports/verification.json)에 보존합니다. GitHub Actions는 새 DB로 공통 브라우저 검사 21개를 실행하며, 선택 인자 `--seed-jar`를 지정하면 이전 DB 업그레이드 검사가 추가됩니다.
 
 행사 100,000개와 장소 100개 조건에서 다음 행사 3개 조회와 인기 장소 조회의 SQL 실행 수는 각각 **101회에서 1회로 감소**했습니다. 로드한 엔티티는 다음 행사 조회에서 **100,100개에서 6개**, 인기 장소 조회에서 **100,100개에서 3개**로 줄었습니다. 비교한 12개 조회 조건의 결과 SHA-256은 모두 일치했습니다.
 
 이 수치는 워밍업 후 반복 측정한 H2 서비스 조회 결과입니다. HTTP 응답 시간, 운영 처리량, 브라우저 로딩 시간을 의미하지 않습니다. 인자가 없는 전체 목록은 같은 조건에서 SQL 101회를 유지합니다. 데이터가 적은 장소별 다음 행사 조회에서는 시간이 소폭 늘어난 조건도 있어 원시 측정값을 함께 보존합니다.
 
-[조회 비교](docs/reports/query-comparison.json), [초기 측정값](docs/reports/initial-query-benchmark.json), [현재 측정값](docs/reports/final-query-benchmark.json), [현재 검증 기록](docs/reports/verification.json)을 확인할 수 있습니다. GitHub Actions 설정은 별도로 제공하며, 로컬 결과를 CI 실행 결과로 소개하지 않습니다.
+[조회 비교](docs/reports/query-comparison.json), [초기 측정값](docs/reports/initial-query-benchmark.json), [현재 측정값](docs/reports/final-query-benchmark.json), [2026-10-15 검증 기록](docs/reports/verification.json)을 확인할 수 있습니다. GitHub Actions 설정은 별도로 제공하며, 로컬 결과를 CI 실행 결과로 소개하지 않습니다.
 
 ![행사 10만 개 조건의 네 조회에서 SQL과 엔티티 로딩 수 비교](docs/images/query-cost.ko.svg)
 

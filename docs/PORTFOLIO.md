@@ -14,7 +14,7 @@ EventLite manages event and venue records, schedules, public queries, and admini
 | Earlier maintenance | Verified 2026-10-05; comparison revision `a18ca3d` | Authorization and input fixes, integration configuration, map regressions, and initial portfolio documentation |
 | Subsequent strengthening | Verified in October 2026 | Database-bounded queries, consistent schedules, concurrent edits, bounded feed cache, recovery tooling, and expanded verification |
 
-The historical [verification.json](verification.json) remains unchanged: Java 212, JavaScript 10, line coverage 95.24%, and branch coverage 72.68%. Current records are stored separately under [reports](reports/verification.json). Later measurements are not attributed to the 2025 assignment.
+The historical [verification.json](verification.json) remains unchanged: Java 212, JavaScript 10, line coverage 95.24%, and branch coverage 72.68%. The [2026-10-15 verification](reports/verification.json) and [2026-10-19 local regression results](reports/ci-repair-verification.json) are stored separately. Later measurements are not attributed to the 2025 assignment.
 
 **Dongmyung Park contributed test cases, security implementation, and core management functionality during the team project.** This included event and venue management and their verification. The initial map integration was handled by another team member. The complete service is the team's work; later maintenance does not redefine every source file or later test as an individual's original contribution.
 
@@ -37,15 +37,18 @@ Actual browser verification also exposed a method-filter ordering issue: a valid
 
 ## Quantitative results
 
-| Verification | Current result |
+| Verification | Local Windows result, 2026-10-19 |
 | --- | --- |
-| Windows Java tests | 276 passed; 0 failures, errors, or skipped tests |
+| Windows Java tests | 278 passed; 0 failures, errors, or skipped tests |
 | JavaScript tests | 15 passed |
 | Java line coverage | 95.31% (691 / 725) |
 | Java branch coverage | 76.32% (232 / 304) |
 | Maven coverage gates | 90% line and 70% branch thresholds passed |
-| Independent Linux Java run | 276 passed; 0 failures, errors, or skipped tests |
 | Browser verification, including initial DB upgrade | 22 passed; 0 failures |
+
+Two new regressions verify H2 database isolation between Spring contexts: opening another context preserves existing rows, and closing it preserves the other context's schema and rows. The `test` profile now assigns each context its own memory database.
+
+The [2026-10-19 local record](reports/ci-repair-verification.json) contains the JDK 17 results above, including the browser run with a retained legacy JAR. The [2026-10-15 record](reports/verification.json) preserves the earlier Windows/Linux 276-test results. GitHub Actions runs the 21 common browser checks with a fresh database; the optional `--seed-jar` argument adds the legacy database upgrade check.
 
 For the fixture with 100,000 events and 100 venues:
 
