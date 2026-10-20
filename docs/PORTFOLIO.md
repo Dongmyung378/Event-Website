@@ -37,6 +37,8 @@ Actual browser verification also exposed a method-filter ordering issue: a valid
 
 ## Quantitative results
 
+The checks and query measurements answer different questions. Test counts describe verified behaviors; line and branch coverage describe which code and conditional paths those tests execute. SQL counts measure database commands, and loaded entities count database-backed Java objects materialised in memory. A lower count can show reduced query work without proving a faster browser page. The timing term **p95** marks a value at or above about 95% of the observations and helps expose slower responses; the median describes the middle observation.
+
 | Verification | Local Windows result, 2026-10-19 |
 | --- | --- |
 | Windows Java tests | 278 passed; 0 failures, errors, or skipped tests |

@@ -6,6 +6,10 @@ This guide describes the maintained application. [The README](../README.md) prov
 
 ## Request and data flow
 
+Read the diagram as the path of a visitor's search or an administrator's form submission. A **controller** receives the web request, a **service** applies the application's rules, and a **repository** reads or writes stored records. **JPA** maps Java entities to database records; **Hibernate** provides that persistence implementation. H2 is the database used here. The API returns structured data through **HAL**, a JSON format with links, instead of rendering an HTML page.
+
+Spring Security checks who may perform an action. **CSRF protection** checks a form token to prevent another site from causing an unwanted state-changing request through a user's signed-in browser. It is separate from checking whether that user is an administrator.
+
 ```mermaid
 flowchart TD
     Browser[Browser] --> Method[Ordered form method filter]
@@ -37,6 +41,8 @@ Event forms require a future date. Stored events on the current day are still up
 The next-three and paged schedule queries order by date, time, case-insensitive name, and ID. Null times come last for the same date. ID resolves remaining ties deterministically. Popular venues order by event count descending, then case-insensitive name and ID, and include venues with zero events when the dataset requires them. Original full-list entry points retain their existing behavior.
 
 ## Query boundaries and optional pagination
+
+A query is a request for stored data. One query can still load many Java objects, and reading their relationships can trigger additional queries, so both SQL count and loaded-entity count matter. The limited queries below ask the database to filter and select the needed records before loading them. Pagination applies the same principle to lists by retrieving one requested page.
 
 `EventRepository.findUpcoming` and `findUpcomingAtVenue` apply the date condition, ordering, and three-row limit in the database. They fetch each selected event's venue in the same query. `VenueRepository.findMostPopular` counts relationships in the database rather than loading every venue's complete event collection.
 

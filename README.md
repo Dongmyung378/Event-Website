@@ -10,9 +10,19 @@ EventLite is a Spring Boot team project for registering and searching events and
 
 ![EventLite local demo](docs/images/eventlite-home.png)
 
+## Understand the application
+
+A visitor searches for an event, checks its date and venue, and browses upcoming events. An administrator signs in to create or edit those records. The input is an event or venue form, or a search request; the output is a saved record, a schedule page, or a structured response for another program. Spring Boot handles the web requests, while the H2 database stores the records.
+
+**CRUD** means creating, reading, updating and deleting records. The **API** is the interface other programs can call; its read-only **HAL JSON** responses contain data and links to related resources. Browser users can use the normal pages without knowing that format.
+
+The engineering question is how to preserve these familiar operations when the database grows or a request fails. For example, displaying the next few events should not require loading every event, and an old edit form should not overwrite a newer change without warning.
+
 ## What the project demonstrates
 
 The current version preserves the original event and venue CRUD, searches, schedule pages, maps, administrator controls, and read-only HAL JSON API. Maintenance strengthens how those features handle larger datasets, simultaneous edits, external service failures, and database recovery.
+
+An **optimistic lock** checks whether a record changed after a form was opened; a conflict asks the user to reload it. A **transaction** keeps a related set of database changes together. A **cache** reuses a recent external response, and **backoff** waits before retrying a failed request. These mechanisms address different failure cases rather than adding new user-facing features.
 
 | Area | Current implementation |
 | --- | --- |
@@ -62,6 +72,10 @@ Requests without pagination parameters retain their existing full-list HTML and 
 Pages start at zero, default to 20 records when the size is omitted, and accept sizes from 1 to 100. Invalid bounds return 400. API clients should request `Accept: application/json` or `application/hal+json`. Paged HAL responses add page metadata and navigation links. The original API remains read-only, including for administrators.
 
 ## Verification and measured results
+
+The figures below answer two separate questions: do the checked behaviors work, and how much database work do selected queries perform? A passing test checks a specific expected behavior. **Line coverage** counts executable lines reached by tests; **branch coverage** counts exercised alternatives such as the true and false sides of a condition. Neither percentage is the probability that the application is error-free.
+
+A **SQL statement** is a request sent to the database. A **loaded entity** is a database-backed Java object brought into application memory, including related records. Reducing these counts means less database and object-loading work for the measured operation. A matching **SHA-256** result signature checks that the compared output stayed identical. **p95** is a high-end timing summary: about 95% of measured durations are at or below it, whereas the median describes the middle observation.
 
 The [2026-10-05 record](docs/verification.json) is retained as historical evidence: 212 Java tests, 10 JavaScript tests, 95.24% Java line coverage, and 72.68% branch coverage. The following figures describe the subsequent strengthening work, not the 2025 assignment.
 
